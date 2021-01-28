@@ -90,7 +90,7 @@ function w0 = initw(x, mu, eta)
     % Airy wave
     omega  = sqrt(g*k*tanh(k*H));
     
-    p = (omega^2/k)*A*cosh(k*(x2+H))*cos(k*x1-omega*t)/sinh(k*H) + g*x2;
+    p = (omega^2/k)*A*cosh(k*(x2+H))*cos(k*x1-omega*t)/sinh(k*H) - g*x2;
     eta = A*sinh(k*(x2+H))*cos(k*x1-omega*t)/sinh(k*H);
     
     w0 = [eta; p];
