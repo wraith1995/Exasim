@@ -105,7 +105,7 @@ dkappadT = @(T) 0;
 % f = @(x,y) [y(2); -y(2)./x - Re*Pr./(gam*nu(y(1),y(3))).*s_EUV(x,y(1),y(3)) - dmudT(y(1)).*y(2).^2./(mu(y(1))); (gam*M2*a(x) - y(2))./y(1)];
 f = @(x,y) [y(2); -y(2)./x - dkappadT(y(1)).*y(2).^2./kappa(y(1)) - Re*Pr*rho(y(3)).*s_EUV(x,y(1),y(3))./(gam*kappa(y(1))); (gam*M2*a(x)-y(2))./y(1)];
 
-q0m = 0.35;  q0p = 0.5;
+q0m = 0.4;  q0p = 0.6;
 
 opts_1 = odeset('RelTol',1e-12,'AbsTol',1e-14);
 [~,ym] = ode45(@(x,y) f(x,y),[R0,R1],[Tbot; q0m; rbot],opts_1);
@@ -149,10 +149,22 @@ end
 % % export_fig 'Plots/Re3000_rho.pdf' -r700
 
 
+gradR = (gam*M2*a(xn)-yn(2))./yn(1);
+
 for iElem = 1:nElems
     for iNode = 1:nNodesElem
-        [~,indexR] = min(abs(xn - sqrt(mesh.dgnodes(iNode,1,iElem)^2 + mesh.dgnodes(iNode,2,iElem)^2)));
+        x1 = mesh.dgnodes(iNode,1,iElem);
+        x2 = mesh.dgnodes(iNode,2,iElem);
+        r = sqrt(x1^2 + x2^2);
+
+        [~,indexR] = min(abs(xn - r));
+
         UDG(iNode,1,iElem) = yn(indexR,3);
         UDG(iNode,4,iElem) = yn(indexR,1);
+%         
+%         UDG(iNode,5,iElem) = -gradR(indexR)*x1/r;
+%         UDG(iNode,9,iElem) = -gradR(indexR)*x2/r;
+%         UDG(iNode,8,iElem) = -yn(indexR,2)*x1/r;
+%         UDG(iNode,12,iElem) = -yn(indexR,2)*x2/r;
     end
 end

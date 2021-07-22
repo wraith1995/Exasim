@@ -15,10 +15,10 @@ run(cdir(1:(ii+5)) + "/Installation/setpath.m");
 pde.mpiprocs = 1;              % number of MPI processors
 
 [pde,mesh] = pdeparams(pde,mesh); 
-pde.dt = 0.02*ones(20000,1);   % time step sizes
+pde.dt = 0.02*ones(8800,1);   % time step sizes
 pde.visdt = pde.dt(1);         % visualization timestep size
-pde.saveSolFreq = 100;          % solution is saved every 100 time steps
-pde.soltime = 100:100:length(pde.dt); % steps at which solution are collected
+pde.saveSolFreq = 50;          % solution is saved every 100 time steps
+pde.soltime = 50:50:length(pde.dt); % steps at which solution are collected
 pde.timestepOffset = 0;
 
 % generate input files and store them in datain folder

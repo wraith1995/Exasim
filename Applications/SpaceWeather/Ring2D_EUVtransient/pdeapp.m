@@ -32,7 +32,7 @@ pde = setcompilers(pde);
 [pde,mesh,master,dmd] = preprocessing(pde,mesh);
 
 % generate source codes and store them in app folder
-gencode(pde);
+% gencode(pde);
 
 % compile source codes to build an executable file and store it in app folder
 compilerstr = compilecode(pde);

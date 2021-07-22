@@ -19,7 +19,7 @@ function s_EUV = EUVsourceSteady(u, x, t, mu, eta)
     %% computation  
     z = sqrt(x1^2 + x2^2);      %radial position  
 
-    cosChi = 1;
+    cosChi = 0.5;
     absSinChi = sqrt(1-cosChi^2);
     
     %Computation F10.7 (let's assume it constant at first, the variation is at another scale)
@@ -52,7 +52,7 @@ function s_EUV = EUVsourceSteady(u, x, t, mu, eta)
     erfcy = Ierf*(a_erf + b_erf*y)/(c_erf + d_erf*y + y*y) + (1-Ierf)*f_erf/(g_erf + y);
     
     
-    IcosChi = 0.5*(1 + tanh(100000*cosChi));
+    IcsChi = 0.5*(1 + tanh(100000*cosChi));
     IsinChi = 0.5*(1 + tanh(100000*(z*absSinChi - R0)));
     
     alpha1 = Rp*erfcy*sqrt(0.5*pi*Xp);

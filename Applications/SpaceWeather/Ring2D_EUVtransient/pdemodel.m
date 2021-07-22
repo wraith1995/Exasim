@@ -5,6 +5,7 @@ pde.source = @source;
 pde.fbou = @fbou;
 pde.ubou = @ubou;
 pde.initu = @initu;
+pde.stab = @stab;
 end
 
 function m = mass(u, q, w, v, x, t, mu, eta)
@@ -38,16 +39,18 @@ function f = flux(u, q, w, v, x, t, mu, eta)
     rho = exp(r);
     r1 = 1/rho;
     p = r*T/(gam*M2);
+    T2 = T/(gam*M2);
 
-    fi = [r*uv, uv*uv+p, vv*uv, uv*T, ...
-            r*vv, uv*vv, vv*vv+p, vv*T];
-        
+%     fi = [r*uv, uv*uv+p, vv*uv, uv*T, ...
+%             r*vv, uv*vv, vv*vv+p, vv*T];
+    
+    fi = [uv, uv*uv+T2, vv*uv, uv*T, ...
+            vv, uv*vv, vv*vv+T2, vv*T];
+    
     % Viscosity
-%     nu = visc;
-%     kstar = T^0.75;
-    kstar = 1;
+%     kstar = 1;
     nu = visc*r1;
-    fc = kstar*gam*nu/Pr;
+    fc = gam*nu/Pr;
     
     txx = nu*c23*(2*ux - vy);
     txy = nu*(uy + vx);
@@ -87,9 +90,9 @@ function s = source(u, q, w, v, x, t, mu, eta)
     r1 = 1/rho;
         
 %     kstar = T^0.75;
-    kstar = 1;
+%     kstar = 1;
     nu = visc*r1;
-    fc = kstar*gam*nu/Pr;
+    fc = gam*nu/Pr;
     
     txx = nu*c23*(2*ux - vy);
     txy = nu*(uy + vx);
@@ -122,21 +125,48 @@ function s = source(u, q, w, v, x, t, mu, eta)
 %     f_spongeU = -sigma*uv;
 %     f_spongeV = -sigma*vv;
     
-    s = [r_1*div; ...
-        ax + div*uv + r_1*Tx/(gam*M2) + Tdrx + f_spongeU; ...
-        ay + div*vv + r_1*Ty/(gam*M2) + Tdry + f_spongeV; ...
+%     s = [r_1*div; ...
+%         ax + div*uv + r_1*Tx/(gam*M2) + Tdrx + f_spongeU; ...
+%         ay + div*vv + r_1*Ty/(gam*M2) + Tdry + f_spongeV; ...
+%         s_EUV + (2-gam)*T*div + drdT + TdV];
+
+    s = [-(uv*rx + vv*ry); ...
+        ax + div*uv - T*rx/(gam*M2) + Tdrx + f_spongeU; ...
+        ay + div*vv - T*ry/(gam*M2) + Tdry + f_spongeV; ...
         s_EUV + (2-gam)*T*div + drdT + TdV];
 end
 
 function fb = fbou(u, q, w, v, x, t, mu, eta, uhat, n, tau)
+    tau = 500;
+
     f = flux(u, q, w, v, x, t, mu, eta);
     fh = f(:,1)*n(1) + f(:,2)*n(2) + tau*(u-uhat); % numerical flux at freestream boundary
     fw = fh;
     fw(1) = 0.0;   % zero velocity 
     
     % Inviscid wall
+    gam = mu(1);
+    Minf = mu(4);
+    M2 = Minf^2;
+    
+    r = u(1);
+    uv = u(2);
+    vv = u(3);
+    T = u(4);
+    p = T/(gam*M2);
+
+%     fi = [r*uv, uv*uv+p, vv*uv, uv*T, ...
+%             r*vv, uv*vv, vv*vv+p, vv*T];
+%     fi = reshape(fi,[4,2]);    
+%     ft = fi(:,1)*n(1) + fi(:,2)*n(2) + tau*(u-uhat);
+
     ft = fw;
+%     fw(4) = 0.0;
+    ft(1) = 0.0;
+    ft(2) = p*n(1);
+    ft(3) = p*n(2);
     ft(4) = 0.0;
+    ft = ft + tau*(u-uhat);
     
     fb = [fw ft];
 end
@@ -173,4 +203,15 @@ function u0 = initu(x, mu, eta)
     
     r = rbot - gam*M2*gravity*z/Tbot;
     u0 = [r, 0.0, 0.0, Tbot];    
+end
+
+function ftau = stab(u1, q1, w1, v1, x, t, mu, eta, uhat, n, tau, u2, q2, w2, v2) 
+    uhat = 0.5*(u1+u2);
+%     tau = gettau(uhat, mu, eta, n);
+    tau = 500;
+    
+    ftau(1) = tau*(u1(1) - u2(1));
+    ftau(2) = tau*(u1(2) - u2(2));
+    ftau(3) = tau*(u1(3) - u2(3));
+    ftau(4) = tau*(u1(4) - u2(4));
 end
