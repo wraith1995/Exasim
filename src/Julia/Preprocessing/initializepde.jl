@@ -1,3 +1,4 @@
+include("constants.jl")
 mutable struct PDEStruct
     codename::String; # Exasim
     version::String;  # Set version
@@ -24,7 +25,7 @@ mutable struct PDEStruct
     ncp::IntP;# number of compoments of (p)
     nco::IntP;# number of compoments of (odg)
     nch::IntP;# number of compoments of (uhat)
-    ncx::IntP;# number of compoments of (xdg)
+    ncx::IntP;# numbecr of compoments of (xdg)
     ncw::IntP;# number of compoments of (wdg)
     nce::IntP;# number of compoments of (output field)
     neb::IntP;# number of element blocks for parallel computation
@@ -123,15 +124,15 @@ end
 function initializepde(version)
     pde = PDEStruct();
 
-    pde.usecmake = 0;
-    pde.buildexec = 0;
-    pde.cpucompiler = "g++";
-    pde.mpicompiler = "mpicxx";
-    pde.gpucompiler = "nvcc";
-    pde.mpirun = "mpirun";
-    pde.gmsh = "gmsh";
-    pde.metis = "mpmetis";
-    pde.paraview = "/Applications/ParaView-5.8.1.app/Contents/MacOS/paraview";
+    pde.usecmake = 0
+    pde.buildexec = 0
+    pde.cpucompiler = cxx
+    pde.mpicompiler = mpicxx
+    pde.gpucompiler = nvcc
+    pde.mpirun = mpiexec
+    pde.gmsh = gmsh
+    pde.metis = metis
+    pde.paraview = paraview
     pde.enzyme = "";
 
     pde.codename = "Exasim";
