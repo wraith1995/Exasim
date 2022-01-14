@@ -1,5 +1,6 @@
 *.pyc
 *.vtu
+*.DS_Store
 lib/Linux/*
 lib/Mac/*
 **/dataout
