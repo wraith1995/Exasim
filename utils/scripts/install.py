@@ -42,7 +42,23 @@ logging.getLogger().addHandler(console)
 log = logging.getLogger()
 log.info("Running %s" % " ".join(sys.argv))
 
+class directory(object):
+    """Context manager that executes body in a given directory"""
+    def __init__(self, dir):
+        self.dir = os.path.abspath(dir)
+    def lower(self, n):
+        return directory(self.dir + n)
 
+    def __enter__(self):
+        self.olddir = os.path.abspath(os.getcwd())
+        log.debug("Old path '%s'" % self.olddir)
+        log.debug("Pushing path '%s'" % self.dir)
+        os.chdir(self.dir)
+
+    def __exit__(self, *args):
+        log.debug("Popping path '%s'" % self.dir)
+        os.chdir(self.olddir)
+        log.debug("New path '%s'" % self.olddir)
 #Infustructure for running the shell and package manager and pip :
 def check_call(arguments):
     try:
@@ -119,10 +135,8 @@ def git_url(plain_url, protocol):
         raise ValueError("Unknown git protocol: %s" % protocol)
 
 
-def git_clone(url):
-    name, plain_url, branch = split_requirements_url(url)
+def git_clone(name, plain_url, branch):
     log.info("Cloning %s\n" % name)
-    branch = branches.get(name.lower(), branch)
     try:
         check_call(["git", "clone", "-q", "--recursive", git_url(plain_url, "https")])
         log.info("Successfully cloned repository %s." % name)
@@ -173,19 +187,10 @@ def git_update(name, url=None):
         git_sha_new = check_output(["git", "rev-parse", "HEAD"])
     return git_sha != git_sha_new
 
-
-def run_pip(args):
-    check_call(pip + args)
-
-
-def run_pip_install(pipargs):
-    # Make pip verbose when logging, so we see what the
-    # subprocesses wrote out.
-    # Particularly important for debugging petsc fails.
-    with environment(**blas):
-        pipargs = ["-vvv"] + pipargs
-        check_call(pipinstall + pipargs)
-
+def python_pip(python, args):
+    check_call(python + " -m pip " + args)
+def julia_pkg(julia, package):
+    check_call(julia + "-e \" import Pkg; Pkgg.add(\"{0}\") \"".format(package))
 
 def run_cmd(args):
     check_call(args)
@@ -209,26 +214,31 @@ def file_path(path):
     
 parser = ArgumentParser(description="""Install Exasim.""",
                             formatter_class=RawDescriptionHelpFormatter)
-parser.add_argument("--no-package-manager", action='store_false', dest="package_manager",
-                        help="Do not attempt to use apt or homebrew to install operating system packages on which we depend.")
-#Use llvm
+parser.add_argument("--no-package-manager", action='store_false', dest="package_manager", default=True,
+                        help="Do not attempt to use apt or homebrew to install operating system packages on which we depend; assume they are in the right place")
+
+parser.add_argument("--exasim-diretory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!")
+parser.add_argument("--exasim-branch", action="store", type="str", default="master")
+parser.add_argument("--exasim-present", action="store_true", default=False)
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
                         help="C compiler to use.. if not, gcc will be used")
 parser.add_argument("--cxx", type=file_path,
                         action="store", default=None,
                         help="C++ compiler to use..if not, g++ will be used")
+parser.add_argument("--mpi", action="store_true", default=False, help="Use MPI.")
 parser.add_argument("--mpicc", type=file_path,
                         action="store", default=None,
-                        help="C compiler to use when building with MPI. If not set, MPICH will be downloaded and used.")
+                        help="C compiler to use when building with MPI. If not set and MPI is enabled, MPICH will be downloaded and used.")
 parser.add_argument("--mpicxx", type=file_path,
                     action="store", default=None,
-                    help="C++ compiler to use when building with MPI. If not set, MPICH will be downloaded and used.")
+                    help="C++ compiler to use when building with MPI. If not set and MPI is enabled, MPICH will be downloaded and used.")
 parser.add_argument("--mpiexec", type=file_path,
                     action="store", default=None,
-                    help="MPI launcher. If not set, MPICH will be downloaded and used.")
+                    help="MPI launcher. If not set and MPI is enabled, MPICH will be downloaded and used.")
 parser.add_argument("--with-blas-lapack", default=None, type=dir_path,
                     help="Specify path to system BLAS/LAPACK directory. Combined because openblas combines them if manually installed correctly.")
+parser.add_arguments("--with-nvcc", default=None, type=file_path, action="store", help="NVCC Launcher. If not set, GPU will not be enabled.")
 
 ##Optional packages: should we install xor should we use a binary you point us to?
 group = parser.add_mutually_exclusive_group()
@@ -278,8 +288,13 @@ def check_pl(args):
         log.info("Installing Matlab systems :(")
     return (python, julia, matlab)
 
-def check_args(args):
-    pass
+def check_args(arg):
+    #if you set the c compiler, you must set the C++ compiler
+    if (arg.cc is None ) != (arg.cxx is None):
+        raise InstallError("If a c compiler is set, a c++ compiler must be set. And vice-versa.")
+    if (arg.mpicc is None) != (arg.mpicxx is None) and (arg.mpiexec is None) != (arg.mpicc is None):
+        raise InstallError("If any mpi system is set, they must all be set. And vice-versa.")
+    
 
 def check_package_manager(args):
     if args.package_manager:
@@ -312,7 +327,7 @@ def linux_or_mac(ps, opt1, opt2):
         ps.append(opt2)
     else:
         raise InstallError("I don't know how to install on your os.")
-def install_packages(args, python, julia, matlab):
+def install_packages(env, args, python, julia, matlab):
     packages = ["autoconf", "automake", "make", "cmake"]
     if args.system_python:
         packages.append("python3")
@@ -323,64 +338,192 @@ def install_packages(args, python, julia, matlab):
     if args.with_blas_lapack is None:
         linux_or_mac(packages, "openblas", "libblas-dev")
         linux_or_mac(packages, "lapack", "liblapack-dev")
-    if args.mpicc is None and args.mpicxx is None and args.mpiexec is None:
+    if args.mpicc is None and args.mpicxx is None and args.mpiexec is None and args.mpi:
         linux_or_mac(packages, "mpich", "mpich")
 
     if args.system_metis:
         linux_or_mac(packages, "libmetis-dev", "metis")
+
     if args.system_gmsh:
         linux_or_mac(packages, "gmsh", "gmsh")
+
     if args.system_paraview:
         linux_or_mac(packages, "paraview", "paraview")
+
 
     log.info("Installing packages {0}".format(packages))
     for pkg in packages:
         unified_package_manager(pkg)
+
+
+def create_exasim_dir(args):
+    location = directory(args.exasim_directory)
+    if not args.exasim_present:
+        branch = "scheduling"
+        exasim_url="https://github.com/wraith1995/Exasim.git"
+        exasim_dir = "Exasim"
+        with location:
+            git_clone(exasim_dir, exasim_url, branch)
+    exasim_location = directory(args.exasim_directory + "Exasim")
+    return exasim_location
+
+def find_executable(name, extra_extra_paths=[], required=True):
+    extra_paths = extra_extra_paths + []
+    path = extra_paths + os.environ()["PATH"]
+    try:
+        log.info("Trying to find executable {0}".format(name))
+        exe = shutil.which(name, path=path)
+        if exe is None and required:
+            raise InstallError("Failed to find {0}".format(name))
+        log.info("Found executable {0} for {1}".format(exe, name))
+        return exe
+    except e:
+        raise InstallError("Failed to find {0} because of {1}".format(name, e))
+def setup_compilers(args, env): #find compilers that are not just set with --cc, --cxx, etc...
+    if args.cc is not None:
+        pass
+    else:
+        env["cc"] = find_executable("gcc")
+    if args.cxx is not None:
+        pass
+    else:
+        env["cxx"] = find_executable("g++")
+    if args.mpi is not None:
+        env["mpicc"] = find_executable("mpicc")
+        env["mpicxx"] = find_executable("mpicxx")
+        env["mpiexec"] = find_executable("mpiexec")
+    else:
+        pass
+def setup_external_packages(args, env):
+    if args.system_metis:
+        env["metis"] = find_executable("mpmetis")
+    if args.system_gmsh:
+        env["gmsh"] = find_executable("gmsh")
+    if args.system_paraview:
+        env["paraview"] = find_executable("paraview")
+
+
+
+def check_compilers(env):
+    pass
+
+def check_external_packages(env):
+    pass
+
+def find_languages(env, args, env, python, julia, matlab):
+    if python:
+        if args.with_python is not None:
+            env["python"] = args.with_python
+        else:
+            exe = find_executable("python3")
+            env["python"] = exe
+    if julia:
+        if args.with_julia is not None:
+            env["jilia"] = args.with_julia
+        else:
+            exe = find_executable("julia")
+            env["julia"] = exe
+    if matlab:
+        env["matlab"] = args.with_matlab
         
-def get_c_cxx(args):
-    pass
-def get_mpi(args):
-    pass
-def get_nvcc(args):
-    pass
-def chec_blas(args):
-    pass
-def check_cublas(args):
-    pass
-def extrapackagepaths(args):
-    pass
-def generate_python(args):
-    pass
-def generate_julia(args):
-    pass
-def generate_matlab(args):
-    pass
+def language_packages(env, python, julia, matlab):
+    if python:
+        python_packages = ["numpy", "scipy", "sympy"]
+        for p in python_packages:
+            log.info("Installing python package %s" % p)
+            python_pip(env["python"], " install " + p)
+            log.info("installed python package %s" % p)
+    if julia:
+        julia_packaes = ["revise", "Sympy"]
+        for p in julia_packaes:
+            log.info("Installing julia package %s" % p)
+            julia_pkg(env["julia"], p)
+            log.info("installed julia package %s" % p)
+            
+    if matlab:
+        log.warning("Install Matlab Symbolic Math Toolkit")
+        pass
+    
+
+def init_env(args):
+    env = dict()
+    #compilers:
+    env["cc"] = args.cc
+    env["cxx"] = args.cxx
+    env["mpicc"] = args.mpicc
+    env["mpicxx"] = args.mpicxx
+    env["mpiexec"] = args.mpiexec
+    env["nvcc"] = ars.with_nvcc
+
+    #external:
+    env["metis"] = args.with_metis
+    env["gmsh"] = args.with_gmsh
+    env["paraview"] = args.with_paraview
+
+    #langs:
+    env["python"] = None
+    env["julia"] = None
+    env["matlab"] = None
+
+    #Potentially otheruseful things
+    env["PATH"] = None
+    env["LD_LIBRARY_PATH"] = None
+    return env
+
+
+def gen_constants_file(env, f):
+    with open(f, "w") as c:
+        for (k,v) in env.items():
+            c.write("{0}=\"{1}\"\n".format(k, str(v)))
+
 """
 Steps:
--2. Dump enviroment
--1. Use of programming languages
-0. If we are using the package manager, check for the PM, install all dependencies that can be installed via package managers
-0.1. Install other dependencies that can't be installed this way and are not system packages (e.g. LLVM, Clang, Halide, Tiramisu, Julia, Matlab?)
-1. Verify existence of C/CPP compilers
-2. Optional existence of MPI+nvcc
-3. Verify existence of Blas/laplac
-4.. Cublas too?
-5. Installation of PL packages required and the associated packages
-7. Generation of files with paths
+0. Parse arguments
+1. Dump enviroment
+2. Check arguments besides PL
+3. Determine choice of programming language
+4. Clone exasim
+5. Build an env for compilers and other variables we will pass on to exasim
+6. Check to see if package managers are around if we want to use them
+7. Check the languages we want are present and add them to the env if needed
+8. Add packages required by these programming languages
+9. Install external dependieces that can't be included via standard means
+10. Setup the compiler env and check the compilers
+11. Setup the external package env and check them
+12. Generate a constants file for use by exasim
 """
 def main():
     args = parser.parse_args()
     dump_env()
-    (python, julia, matlab) = check_pl(args)
     check_args()
+    (python, julia, matlab) = check_pl(args)
+    exasim_dir = create_exasim_dir(args)
+    exasim_env = init_env(args)
     check_package_manager()
-    install_packages(args, python, julia, matlab)
-    #get paths/verify packages
-    #install pl packages via package manager
-    #install 
+    install_packages(env, args, python, julia, matlab)
+    find_languages(env, args, exasim_env, python, julia, matlab)
+    language_packages(env, python, julia, matlab)
+    with exasim_dir:
+        os.mkdir("External")
+        deps = exasim_dir.lower("External")
+        with deps:
+            #install external depends here.
+            #e.g LLVM, CLANG, Halide, Tiramisu, Julia, Matlab
+            pass
+        setup_compilers(args, env) #This is here because in the future we will want to include compiler info from downloaded compilers
+        check_compilers(env)
+        setup_external_packages(args, env)
+        check_external_packages(env)
 
-    
-
+        if julia:
+            with exasim_dir.lower("src/Julia/Preprocessing"):
+                gen_constants_file(env, "constants.jl")
+        if matlab:
+            with exasim_dir.lower("src/Julia/Preprocessing"):
+                gen_constants_file(env, "constants.m")
+        if python:
+            with exasim_dir.lower("src/Python/Preprocessing"):
+                gen_constants_file(env, "constants.py")
 
 if __name__ == "__main__":
     main()
