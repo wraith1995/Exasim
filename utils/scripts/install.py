@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-#NOTE: I stole a lot of this from Firedrake to make a strictly inferior, but still good enough build script in under 2 hours.
+#NOTE: I stole a lot of this from Firedrake to make a strictly inferior, but still good enough build script in under 3 hours.
 import logging
 import platform
 import subprocess
@@ -32,7 +32,7 @@ else:
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-6s %(message)s',
                     filename=logfile,
-                    filemode=logfile_mode)
+                    filemode="w")
 # Log to console at INFO level
 console = logging.StreamHandler()
 console.setLevel(logging.INFO)
@@ -188,9 +188,9 @@ def git_update(name, url=None):
     return git_sha != git_sha_new
 
 def python_pip(python, args):
-    check_call(python + " -m pip " + args)
+    check_call([python] + [" -m pip" + args])
 def julia_pkg(julia, package):
-    check_call(julia + "-e \" import Pkg; Pkgg.add(\"{0}\") \"".format(package))
+    check_call([julia] + ["-e \" import Pkg; Pkgg.add(\"{0}\") \"".format(package)])
 
 def run_cmd(args):
     check_call(args)
@@ -217,8 +217,8 @@ parser = ArgumentParser(description="""Install Exasim.""",
 parser.add_argument("--no-package-manager", action='store_false', dest="package_manager", default=True,
                         help="Do not attempt to use apt or homebrew to install operating system packages on which we depend; assume they are in the right place")
 
-parser.add_argument("--exasim-diretory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!")
-parser.add_argument("--exasim-branch", action="store", type="str", default="master")
+parser.add_argument("--exasim-diretory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!", dest="exasim_directory")
+parser.add_argument("--exasim-branch", action="store", type=str, default="master")
 parser.add_argument("--exasim-present", action="store_true", default=False)
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
@@ -238,7 +238,7 @@ parser.add_argument("--mpiexec", type=file_path,
                     help="MPI launcher. If not set and MPI is enabled, MPICH will be downloaded and used.")
 parser.add_argument("--with-blas-lapack", default=None, type=dir_path,
                     help="Specify path to system BLAS/LAPACK directory. Combined because openblas combines them if manually installed correctly.")
-parser.add_arguments("--with-nvcc", default=None, type=file_path, action="store", help="NVCC Launcher. If not set, GPU will not be enabled.")
+parser.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC Launcher. If not set, GPU will not be enabled.")
 
 ##Optional packages: should we install xor should we use a binary you point us to?
 group = parser.add_mutually_exclusive_group()
@@ -261,7 +261,7 @@ group.add_argument("--system-julia", action="store_true", dest="system_julia")
 group.add_argument("--with-julia", default=None, type=file_path, action="store")
 
 group = parser.add_mutually_exclusive_group()
-group.add_argument("--with-matlab", action="store_true", dest="system_matlab")
+group.add_argument("--with-matlab", action="store_true", dest="with_matlab")
 
 class InstallError(Exception):
     # Exception for generic install problems.
@@ -328,6 +328,8 @@ def linux_or_mac(ps, opt1, opt2):
     else:
         raise InstallError("I don't know how to install on your os.")
 def install_packages(env, args, python, julia, matlab):
+    if not args.package_manager:
+        return
     packages = ["autoconf", "automake", "make", "cmake"]
     if args.system_python:
         packages.append("python3")
@@ -360,16 +362,16 @@ def create_exasim_dir(args):
     location = directory(args.exasim_directory)
     if not args.exasim_present:
         branch = "scheduling"
-        exasim_url="https://github.com/wraith1995/Exasim.git"
+        exasim_url="github.com/wraith1995/Exasim.git"
         exasim_dir = "Exasim"
         with location:
             git_clone(exasim_dir, exasim_url, branch)
     exasim_location = directory(args.exasim_directory + "Exasim")
     return exasim_location
 
-def find_executable(name, extra_extra_paths=[], required=True):
-    extra_paths = extra_extra_paths + []
-    path = extra_paths + os.environ()["PATH"]
+def find_executable(name, extra_extra_paths="", required=True):
+    extra_paths = extra_extra_paths + ""
+    path = extra_paths + os.environ["PATH"]
     try:
         log.info("Trying to find executable {0}".format(name))
         exe = shutil.which(name, path=path)
@@ -409,8 +411,7 @@ def check_compilers(env):
 
 def check_external_packages(env):
     pass
-
-def find_languages(env, args, env, python, julia, matlab):
+def find_languages(env, args, python, julia, matlab):
     if python:
         if args.with_python is not None:
             env["python"] = args.with_python
@@ -453,7 +454,7 @@ def init_env(args):
     env["mpicc"] = args.mpicc
     env["mpicxx"] = args.mpicxx
     env["mpiexec"] = args.mpiexec
-    env["nvcc"] = ars.with_nvcc
+    env["nvcc"] = args.with_nvcc
 
     #external:
     env["metis"] = args.with_metis
@@ -495,13 +496,13 @@ Steps:
 def main():
     args = parser.parse_args()
     dump_env()
-    check_args()
+    check_args(args)
     (python, julia, matlab) = check_pl(args)
     exasim_dir = create_exasim_dir(args)
-    exasim_env = init_env(args)
-    check_package_manager()
+    env = init_env(args)
+    check_package_manager(args)
     install_packages(env, args, python, julia, matlab)
-    find_languages(env, args, exasim_env, python, julia, matlab)
+    find_languages(env, args, python, julia, matlab)
     language_packages(env, python, julia, matlab)
     with exasim_dir:
         os.mkdir("External")
