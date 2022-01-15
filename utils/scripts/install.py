@@ -313,14 +313,17 @@ def check_package_manager(args):
             except subprocess.CalledProcessError:
                 # expected failure if already installed
                 pass
-        else:
+        elif osname == "Linux":
             log.info("Checking apt")
             try:
                 check_call(["apt-get", "--version"])
                 check_call(["apt update", "--version"])
             except (subprocess.CalledProcessError, InstallError):
                 log.info("Apt-get not found or disabled. Please enable or disable the package manager!")
+        else:
+            raise InstallError("I don't know how to install on your os.")
     else:
+        log.warning("We are not using the package manager; all required packages must already be in the path or specified manually.")
         pass
 
 def linux_or_mac(ps, opt1, opt2):
@@ -373,6 +376,7 @@ def create_exasim_dir(args):
     return exasim_location
 
 def find_executable(name, extra_extra_paths="", required=True):
+    #TODO: use a list and then join instead of this bs
     extra_paths = extra_extra_paths + ""
     path = extra_paths + os.environ["PATH"]
     try:
@@ -382,7 +386,7 @@ def find_executable(name, extra_extra_paths="", required=True):
             raise InstallError("Failed to find {0}".format(name))
         log.info("Found executable {0} for {1}".format(exe, name))
         return exe
-    except e:
+    except Exception as e:
         raise InstallError("Failed to find {0} because of {1}".format(name, e))
 def setup_compilers(args, env): #find compilers that are not just set with --cc, --cxx, etc...
     if args.cc is not None:
@@ -408,10 +412,9 @@ def setup_external_packages(args, env):
         env["paraview"] = find_executable("paraview")
 
 
-
+#Later, we will add these to make sure things work.
 def check_compilers(env):
     pass
-
 def check_external_packages(env):
     pass
 def find_languages(env, args, python, julia, matlab):
