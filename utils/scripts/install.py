@@ -433,6 +433,9 @@ def find_languages(env, args, python, julia, matlab):
 def language_packages(env, python, julia, matlab):
     if python:
         python_packages = ["numpy", "scipy", "sympy"]
+        log.info("Checking if pip is installed.")
+        check_call([env["python"], "-m", "pip", "--version"])
+        log.info("Pip is installed.")
         for p in python_packages:
             log.info("Installing python package %s" % p)
             python_pip(env["python"], p)
@@ -445,8 +448,7 @@ def language_packages(env, python, julia, matlab):
             log.info("installed julia package %s" % p)
             
     if matlab:
-        log.warning("Install Matlab Symbolic Math Toolkit")
-        pass
+        log.warning("Install Matlab Symbolic Math Toolkit on your pown")
     
 
 def init_env(args):
