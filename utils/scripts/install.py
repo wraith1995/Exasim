@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode="w")
 # Log to console at INFO level
 console = logging.StreamHandler()
-console.setLevel(logging.DEBUG)
+console.setLevel(logging.INFO)
 formatter = logging.Formatter('%(message)s')
 console.setFormatter(formatter)
 logging.getLogger().addHandler(console)
@@ -268,10 +268,13 @@ class InstallError(Exception):
     pass
 
 def dump_env():
-    log.info("Dumping OS Environment:")
+    log.debug("Dumping OS Environment:")
     for k in os.environ:
-        log.info("Var %s = %s" % (k, os.environ[k]))
-    log.info("Dumped OS Enviroment!")
+        if k != "PATH":
+            log.debug("Var %s = %s" % (k, os.environ[k]))
+        else:
+            log.info("Var PATH = %s" % os.environ[k])
+    log.denug("Dumped OS Enviroment!")
 
     
 def check_pl(args):
