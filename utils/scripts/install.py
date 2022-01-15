@@ -229,13 +229,13 @@ parser.add_argument("--cxx", type=file_path,
 parser.add_argument("--mpi", action="store_true", default=False, help="Use MPI.")
 parser.add_argument("--mpicc", type=file_path,
                         action="store", default=None,
-                        help="C compiler to use when building with MPI. If not set and MPI is enabled, MPICH will be downloaded and used.")
+                        help="C compiler to use when building with MPI. If not set and MPI is enabled, MPICH or openmpi will be downloaded and used.")
 parser.add_argument("--mpicxx", type=file_path,
                     action="store", default=None,
-                    help="C++ compiler to use when building with MPI. If not set and MPI is enabled, MPICH will be downloaded and used.")
+                    help="C++ compiler to use when building with MPI. If not set and MPI is enabled, MPICH or openmpi will be downloaded and used.")
 parser.add_argument("--mpiexec", type=file_path,
                     action="store", default=None,
-                    help="MPI launcher. If not set and MPI is enabled, MPICH will be downloaded and used.")
+                    help="MPI launcher. If not set and MPI is enabled, MPICH or openmpi will be downloaded and used.")
 parser.add_argument("--with-blas-lapack", default=None, type=dir_path,
                     help="Specify path to system BLAS/LAPACK directory. Combined because openblas combines them if manually installed correctly.")
 parser.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC binary. If not set, GPU will not be enabled.")
@@ -347,7 +347,7 @@ def install_packages(env, args, python, julia, matlab):
         linux_or_mac(packages, "openblas", "libblas-dev")
         linux_or_mac(packages, "lapack", "liblapack-dev")
     if args.mpicc is None and args.mpicxx is None and args.mpiexec is None and args.mpi:
-        linux_or_mac(packages, "mpich", "mpich")
+        linux_or_mac(packages, "openmpi", "openmpi")
 
     if args.system_metis:
         linux_or_mac(packages, "libmetis-dev", "metis")
@@ -540,10 +540,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
