@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode="w")
 # Log to console at INFO level
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)
+console.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(message)s')
 console.setFormatter(formatter)
 logging.getLogger().addHandler(console)
@@ -47,7 +47,7 @@ class directory(object):
     def __init__(self, dir):
         self.dir = os.path.abspath(dir)
     def lower(self, n):
-        return directory(self.dir + n)
+        return directory(self.dir + "/" +  n)
 
     def __enter__(self):
         self.olddir = os.path.abspath(os.getcwd())
@@ -60,10 +60,10 @@ class directory(object):
         os.chdir(self.olddir)
         log.debug("New path '%s'" % self.olddir)
 #Infustructure for running the shell and package manager and pip :
-def check_call(arguments):
+def check_call(arguments, shell=False):
     try:
         log.debug("Running command '%s'", " ".join(arguments))
-        log.debug(subprocess.check_output(arguments, stderr=subprocess.STDOUT, env=os.environ).decode())
+        log.debug(subprocess.check_output(arguments, stderr=subprocess.STDOUT, shell=shell, env=os.environ).decode())
     except subprocess.CalledProcessError as e:
         log.debug(e.output.decode())
         raise
@@ -187,8 +187,8 @@ def git_update(name, url=None):
         git_sha_new = check_output(["git", "rev-parse", "HEAD"])
     return git_sha != git_sha_new
 
-def python_pip(python, args):
-    check_call([python] + [" -m pip" + args])
+def python_pip(python, package):
+    check_call([python, "-m", "pip", "install", package])
 def julia_pkg(julia, package):
     check_call([julia] + ["-e \" import Pkg; Pkgg.add(\"{0}\") \"".format(package)])
 
@@ -366,7 +366,7 @@ def create_exasim_dir(args):
         exasim_dir = "Exasim"
         with location:
             git_clone(exasim_dir, exasim_url, branch)
-    exasim_location = directory(args.exasim_directory + "Exasim")
+    exasim_location = location.lower("Exasim")
     return exasim_location
 
 def find_executable(name, extra_extra_paths="", required=True):
@@ -390,7 +390,7 @@ def setup_compilers(args, env): #find compilers that are not just set with --cc,
         pass
     else:
         env["cxx"] = find_executable("g++")
-    if args.mpi is not None:
+    if args.mpi:
         env["mpicc"] = find_executable("mpicc")
         env["mpicxx"] = find_executable("mpicxx")
         env["mpiexec"] = find_executable("mpiexec")
@@ -432,7 +432,7 @@ def language_packages(env, python, julia, matlab):
         python_packages = ["numpy", "scipy", "sympy"]
         for p in python_packages:
             log.info("Installing python package %s" % p)
-            python_pip(env["python"], " install " + p)
+            python_pip(env["python"], p)
             log.info("installed python package %s" % p)
     if julia:
         julia_packaes = ["revise", "Sympy"]
@@ -505,7 +505,8 @@ def main():
     find_languages(env, args, python, julia, matlab)
     language_packages(env, python, julia, matlab)
     with exasim_dir:
-        os.mkdir("External")
+        if not args.exasim_present:
+            os.mkdir("External")
         deps = exasim_dir.lower("External")
         with deps:
             #install external depends here.
@@ -518,12 +519,15 @@ def main():
 
         if julia:
             with exasim_dir.lower("src/Julia/Preprocessing"):
+                log.info("Generating Julia constants file")
                 gen_constants_file(env, "constants.jl")
         if matlab:
             with exasim_dir.lower("src/Julia/Preprocessing"):
+                log.info("Generating Matlab constants file")
                 gen_constants_file(env, "constants.m")
         if python:
             with exasim_dir.lower("src/Python/Preprocessing"):
+                log.info("Generating Python constants file")
                 gen_constants_file(env, "constants.py")
 
 if __name__ == "__main__":
