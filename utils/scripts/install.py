@@ -217,9 +217,9 @@ parser = ArgumentParser(description="""Install Exasim.""",
 parser.add_argument("--no-package-manager", action='store_false', dest="package_manager", default=True,
                         help="Do not attempt to use apt or homebrew to install operating system packages on which we depend; assume they are in the right place")
 
-parser.add_argument("--exasim-diretory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!", dest="exasim_directory")
-parser.add_argument("--exasim-branch", action="store", type=str, default="master")
-parser.add_argument("--exasim-present", action="store_true", default=False)
+parser.add_argument("--exasim-directory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!", dest="exasim_directory", help="Location that exasim is already installed in or where you want to install it.")
+parser.add_argument("--exasim-branch", action="store", type=str, default="master", help="Branch of Exasim to install")
+parser.add_argument("--exasim-present", action="store_true", default=False, help="Do not clone exasim; Just rerun install as if clone has just been finished.")
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
                         help="C compiler to use.. if not, gcc will be used")
@@ -238,7 +238,7 @@ parser.add_argument("--mpiexec", type=file_path,
                     help="MPI launcher. If not set and MPI is enabled, MPICH will be downloaded and used.")
 parser.add_argument("--with-blas-lapack", default=None, type=dir_path,
                     help="Specify path to system BLAS/LAPACK directory. Combined because openblas combines them if manually installed correctly.")
-parser.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC Launcher. If not set, GPU will not be enabled.")
+parser.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC binary. If not set, GPU will not be enabled.")
 
 ##Optional packages: should we install xor should we use a binary you point us to?
 group = parser.add_mutually_exclusive_group()
