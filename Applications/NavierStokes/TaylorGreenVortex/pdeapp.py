@@ -1,13 +1,9 @@
 # import external modules
 import numpy, os
 from numpy import pi
-
-# Add Exasim to Python search path
-cdir = os.getcwd(); ii = cdir.find("Exasim");
-exec(open(cdir[0:(ii+6)] + "/Installation/setpath.py").read());
-
 # import internal modules
-import Preprocessing, Postprocessing, Gencode, Mesh
+
+from PyExasim from PyExasim import Preprocessing, Postprocessing, Gencode, Mesh
 
 # Create pde object and mesh object
 pde,mesh = Preprocessing.initializeexasim();
