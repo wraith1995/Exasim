@@ -306,11 +306,11 @@ def check_args(arg):
     install, update, configure, build = False, False, False, False
     if arg.install:
         install, update, configure, build= True, True, True, True
-    if args.update:
+    if arg.update:
         update, configure, build = True, True, True
-    if args.configure:
+    if arg.configure:
         configure, build = True, True
-    if args.build:
+    if arg.build:
         build = True
     if not any([install, update, configure, build]):
         raise InstallError("You must pick one of install, update, confiugure, build")
