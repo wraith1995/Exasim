@@ -558,7 +558,7 @@ def main():
                     log.info("Generating Matlab constants file")
                     gen_constants_file(env, "constants.m")
             if python:
-                with exasim_dir.lower("src/Python/Preprocessing"):
+                with exasim_dir.lower("src/PyExasim/Preprocessing"):
                     log.info("Generating Python constants file")
                     gen_constants_file(env, "constants.py")
         if build:
