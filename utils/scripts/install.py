@@ -217,7 +217,7 @@ parser = ArgumentParser(description="""Install Exasim.""",
 parser.add_argument("--no-package-manager", action='store_false', dest="package_manager", default=True,
                         help="Do not attempt to use apt or homebrew to install operating system packages on which we depend; assume they are in the right place")
 
-parser.add_argument("--exasim-directory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!", dest="exasim_directory", help="Location that exasim is already installed in or where you want to install it.")
+parser.add_argument("--exasim-directory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, dest="exasim_directory", help="Location that exasim is already installed in or where you want to install it.")
 parser.add_argument("--exasim-branch", action="store", type=str, default="master", help="Branch of Exasim to install")
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--install", action="store_true", default=False, help="Download Exasim + dependencies, and then configure, and then build.")
