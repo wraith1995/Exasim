@@ -509,6 +509,7 @@ def init_env(args):
     env["PATH"] = None
     env["LD_LIBRARY_PATH"] = None
     env["OS"] = osname
+    env["ARCH"] = arch
     return env
 
 
@@ -590,12 +591,13 @@ def main():
                 log.info("Making os directory")
                 os.mkdir(osname)
                 log.info("Copyign files to os director")
-                shutil.copy("commonCore.o", osname + "/commonCore.o")
-                shutil.copy("opuCore.o", osname + "/opuCore.o")
+                shutil.move("commonCore.o", osname + "/commonCore.o")
+                shutil.move("opuCore.o", osname + "/opuCore.o")
                 if env["nvcc"] is not None:
                     log.info("Compiling gpuCore.cu")
                     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuCore.cu", "-o", "gpuCore.o"])
-                    shutil.copy("gpuCore.o", osname + "/gpuCore.o")
+                    shutil.move("gpuCore.o", osname + "/gpuCore.o")
+                    
                 
 
                 
