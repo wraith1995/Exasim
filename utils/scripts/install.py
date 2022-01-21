@@ -598,6 +598,6 @@ def main():
                     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuCore.cu", "-o", "gpuCore.o"])
                     shutil.move("gpuCore.o", osname + "/gpuCore.o")
         if python:
-            print("Run {0}/utils/scripts/pyactivate.sh to setup the python modules to setup exasim".format(exasim_dir.dir))
+            print("Run source {0}/utils/scripts/pyactivate.sh to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
     main()
