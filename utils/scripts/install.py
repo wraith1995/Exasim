@@ -384,7 +384,7 @@ def install_packages(env, args, python, julia, matlab):
 
 def create_exasim_dir(args):
     location = directory(args.exasim_directory)
-    if args.install
+    if args.install:
         branch = "scheduling"
         exasim_url="github.com/wraith1995/Exasim.git"
         exasim_dir = "Exasim"
