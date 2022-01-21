@@ -1,9 +1,9 @@
 from numpy import *
-from partition import partition
-from neighboringelements import neighboringelements
-from ainb import ainb
-from writebin import writebin
-from sortrows import sortrows
+from .partition import partition
+from .neighboringelements import neighboringelements
+from .ainb import ainb
+from .writebin import writebin
+from .sortrows import sortrows
 
 def elementpartition2(dmd,t,t2t,nproc,metis):
 

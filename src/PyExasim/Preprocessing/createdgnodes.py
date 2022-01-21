@@ -1,5 +1,5 @@
 from numpy import *
-from masternodes import masternodes
+from .masternodes import masternodes
 
 def createdgnodes(p,t,f,curvedboundary,curvedboundaryexpr,porder):
 

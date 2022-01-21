@@ -1,7 +1,7 @@
 from numpy import *
-from localbasis import localbasis
-from getelemface import getelemface
-from permindex import permindex
+from .localbasis import localbasis
+from .getelemface import getelemface
+from .permindex import permindex
 import sys
 
 def faceconnectivity2(t,f2t,dim,elemtype,porder):

@@ -1,6 +1,7 @@
-import Preprocessing, Gencode
-from fetchsolution import fetchsolution
-from generatecode import generatecode
+from ..Preprocessing import Preprocessing
+from ..Gencode import Gencode
+from .fetchsolution import fetchsolution
+from .generatecode import generatecode
 
 def exasim(pde,mesh):
 

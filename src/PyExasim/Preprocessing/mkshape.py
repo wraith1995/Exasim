@@ -3,12 +3,8 @@ from numpy import *
 # from koornwinder import *
 
 import importlib
-import tensorproduct
-import koornwinder
-importlib.reload(tensorproduct)
-importlib.reload(koornwinder)
-from tensorproduct import *
-from koornwinder import *
+from .tensorproduct import *
+from .koornwinder import *
 
 def mkshape(porder,plocal,pts,elemtype):
 

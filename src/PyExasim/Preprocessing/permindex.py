@@ -1,5 +1,5 @@
 from numpy import *
-from xiny import xiny
+from .xiny import xiny
 
 def permindex(plocfc,dim,elemtype):
 

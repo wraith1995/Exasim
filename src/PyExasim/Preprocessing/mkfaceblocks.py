@@ -1,5 +1,5 @@
 from numpy import *
-from mkelemblocks import mkelemblocks
+from .mkelemblocks import mkelemblocks
 
 def mkfaceblocks(mf,bcm,ns):
 

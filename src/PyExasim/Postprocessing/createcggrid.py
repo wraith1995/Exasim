@@ -1,7 +1,8 @@
 from numpy import *
-from mkcgent2dgent import mkcgent2dgent
-from createcgcells import createcgcells
-from getcelltype import getcelltype
+#from .mkcgent2dgent import mkcgent2dgent
+from ..Preprocessing import mkcgent2dgent
+from .createcgcells import createcgcells
+from .getcelltype import getcelltype
 
 def createcggrid(dgnodes,tlocal):
 

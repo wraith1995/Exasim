@@ -1,8 +1,8 @@
 from numpy import *
-from getelemface import getelemface
-from xiny import xiny
+from .getelemface import getelemface
+from .xiny import xiny
 #from mkf2t import mkf2t
-from mkf2e import mkf2e
+from .mkf2e import mkf2e
 
 def  facenumbering(p,t,elemtype,bndexpr,prdexpr):
 

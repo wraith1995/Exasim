@@ -1,4 +1,6 @@
-import Preprocessing, Gencode
+from ..Preprocessing import Preprocessing
+from ..Gencode import Gencode
+
 
 def generatecode(pde,mesh):
 

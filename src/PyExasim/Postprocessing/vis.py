@@ -1,9 +1,9 @@
 import os, sys, shutil
 from numpy import *
-import Preprocessing
-from createcggrid import createcggrid
-from vtuwrite import vtuwrite
-from pvdwrite import pvdwrite
+from ..Preprocessing import Preprocessing
+from .createcggrid import createcggrid
+from .vtuwrite import vtuwrite
+from .pvdwrite import pvdwrite
 
 def vis(visfields,app,mesh):
 

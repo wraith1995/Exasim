@@ -1,7 +1,7 @@
 from numpy import *
-from koornwinder1d import *
-from koornwinder2d import *
-from koornwinder3d import *
+from .koornwinder1d import *
+from .koornwinder2d import *
+from .koornwinder3d import *
 
 def koornwinder(x,porder):
 

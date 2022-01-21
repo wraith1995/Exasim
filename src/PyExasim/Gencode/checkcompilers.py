@@ -1,7 +1,7 @@
 import shutil
 import os
 from sys import platform
-from genlib import genlib
+from .genlib import genlib
 
 def checkcompilers(app):
 

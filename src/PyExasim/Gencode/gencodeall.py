@@ -1,4 +1,4 @@
-from gencodeelemface import gencodeelemface
+from .gencodeelemface import gencodeelemface
 
 def gencodeall(npm):
     # Code generation for all models

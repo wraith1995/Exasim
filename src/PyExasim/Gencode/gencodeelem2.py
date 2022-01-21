@@ -1,5 +1,5 @@
 import sympy
-from varsassign import varsassign
+from .varsassign import varsassign
 
 def gencodeelem2(filename, f, xdg, udg, odg, wdg, uinf, param, time):
 

@@ -1,5 +1,5 @@
-from varsassign import varsassign
-from sympyassign import sympyassign
+from .varsassign import varsassign
+from .sympyassign import sympyassign
 
 def gencodebou(filename, f, xdg, udg, odg, wdg, uhg, nlg, tau, uinf, param, time):
 

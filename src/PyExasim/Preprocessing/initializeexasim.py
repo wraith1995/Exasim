@@ -1,5 +1,5 @@
-from initializepde import initializepde
-from initializemesh import initializemesh
+from .initializepde import initializepde
+from .initializemesh import initializemesh
 
 def initializeexasim():
 

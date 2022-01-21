@@ -1,5 +1,5 @@
-from elementpartition2 import elementpartition2
-from facepartition2 import facepartition2
+from .elementpartition2 import elementpartition2
+from .facepartition2 import facepartition2
 
 def meshpartition2(dmd,t,f,t2t,bcm,dim,elemtype,porder,nproc,metis):
 

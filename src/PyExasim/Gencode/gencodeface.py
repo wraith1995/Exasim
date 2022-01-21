@@ -1,4 +1,4 @@
-from gencodebou import gencodebou
+from .gencodebou import gencodebou
 
 def gencodeface(filename, f, xdg, udg, odg, wdg, uhg, nlg, tau, uinf, param, time):
 

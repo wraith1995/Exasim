@@ -1,6 +1,6 @@
 from numpy import *
 from sys import platform, exit
-from findexec import findexec
+from .findexec import findexec
 import shutil
 import csv
 import os

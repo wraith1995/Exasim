@@ -1,6 +1,6 @@
 from numpy import *
-from getelemface import *
-from sortrows import *
+from .getelemface import *
+from .sortrows import *
 
 def mkf2e(t,elemtype,nd):
 

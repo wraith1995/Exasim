@@ -1,10 +1,10 @@
 from numpy import *
-from masternodes import *
-from gaussnodes import *
+from .masternodes import *
+from .gaussnodes import *
 # import importlib
 # import mkshape #import the module here, so that it can be reloaded.
 # importlib.reload(mkshape)
-from mkshape import *
+from .mkshape import *
 
 def mkmaster(dim,porder,pgauss,elemtype,nodetype):
 

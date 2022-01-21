@@ -1,16 +1,16 @@
 import numpy
-import constants
+from .constants  import *
 def initializepde(version):
 
     pde = {'codename' : [], 'version' : []};
 
-    pde['cpucompiler']  = constants.cxx;
-    pde['mpicompiler'] = constants.mpicxx;
-    pde['gpucompiler'] = constants.nvcc;
-    pde['mpirun'] = constants.mpiexec;
-    pde['gmsh'] = constants.gmsh;
-    pde['metis'] = constants.metis;
-    pde['paraview'] = constants.paraview;
+    pde['cpucompiler']  = cxx;
+    pde['mpicompiler'] = mpicxx;
+    pde['gpucompiler'] = nvcc;
+    pde['mpirun'] = mpiexec;
+    pde['gmsh'] = gmsh;
+    pde['metis'] = metis;
+    pde['paraview'] = paraview;
     pde['enzyme'] = [];
 
     pde['codename'] = "Exasim";

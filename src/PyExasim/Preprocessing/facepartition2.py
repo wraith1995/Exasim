@@ -1,6 +1,6 @@
 from numpy import *
-from mkf2e import mkf2e
-from faceconnectivity2 import faceconnectivity2
+from .mkf2e import mkf2e
+from .faceconnectivity2 import faceconnectivity2
 
 def facepartition2(dmd,t,f,bcm,dim,elemtype,porder,nproc):
 

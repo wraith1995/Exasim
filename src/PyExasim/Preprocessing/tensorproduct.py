@@ -2,9 +2,8 @@ from numpy import *
 #from koornwinder import *
 
 import importlib
-import koornwinder
-importlib.reload(koornwinder)
-from koornwinder import *
+from .koornwinder import *
+
 
 def tensorproduct(x,porder):
 

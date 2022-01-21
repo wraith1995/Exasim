@@ -1,4 +1,4 @@
-from vtuwrite import vtuwrite
+from .vtuwrite import vtuwrite
 from numpy import matmul, reshape
 import sys
 

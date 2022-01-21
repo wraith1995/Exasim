@@ -1,5 +1,5 @@
 from numpy import *
-from getsolution import getsolution
+from .getsolution import getsolution
 
 def fetchsolution(app,master,dmd,dirname="dataout"):
 

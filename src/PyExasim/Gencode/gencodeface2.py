@@ -1,5 +1,5 @@
-from varsassign import varsassign
-from sympyassign import sympyassign
+from .varsassign import varsassign
+from .sympyassign import sympyassign
 
 def gencodeface2(filename, f, xdg, udg1, udg2, odg1, odg2, wdg1, wdg2, uhg, nlg, tau, uinf, param, time):
 

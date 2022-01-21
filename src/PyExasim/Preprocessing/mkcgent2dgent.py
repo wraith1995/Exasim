@@ -1,7 +1,7 @@
 from numpy import *
-from mkelconcg import mkelconcg
-from mkent2elem import mkent2elem
-from xiny import xiny
+from .mkelconcg import mkelconcg
+from .mkent2elem import mkent2elem
+from .xiny import xiny
 
 def mkcgent2dgent(dgnodes,tol):
 

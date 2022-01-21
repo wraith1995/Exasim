@@ -1,5 +1,5 @@
 from numpy import *
-from masternodes import masternodes
+from .masternodes import masternodes
 
 def localbasis(porder,dim,elemtype):
 

@@ -3,23 +3,23 @@ import os, sys, numpy
 from sympy import *
 from importlib import import_module
 import importlib.util
-from checkcompilers import checkcompilers
-from setcompilers import setcompilers
-from compilecode import compilecode
-from runcode import runcode
-from gencodeall import gencodeall
-from syminit import syminit
-from gencodeelemface import gencodeelemface
-from gencodeelem import gencodeelem
-from nocodeelem import nocodeelem
-from gencodeelem2 import gencodeelem2
-from nocodeelem2 import nocodeelem2
-from gencodeelem3 import gencodeelem3
-from nocodeelem3 import nocodeelem3
-from gencodeface import gencodeface
-from nocodeface import nocodeface
-from gencodeface2 import gencodeface2
-from nocodeface2 import nocodeface2
+from .checkcompilers import checkcompilers
+from .setcompilers import setcompilers
+from .compilecode import compilecode
+from .runcode import runcode
+from .gencodeall import gencodeall
+from .syminit import syminit
+from .gencodeelemface import gencodeelemface
+from .gencodeelem import gencodeelem
+from .nocodeelem import nocodeelem
+from .gencodeelem2 import gencodeelem2
+from .nocodeelem2 import nocodeelem2
+from .gencodeelem3 import gencodeelem3
+from .nocodeelem3 import nocodeelem3
+from .gencodeface import gencodeface
+from .nocodeface import nocodeface
+from .gencodeface2 import gencodeface2
+from .nocodeface2 import nocodeface2
 
 def gencode(app):
 

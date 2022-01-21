@@ -1,4 +1,7 @@
-import Gencode, Preprocessing, os
+from ..Gencode import Gencode
+from ..Preprocessing import Preprocessing
+#import Gencode, Preprocessing
+import os
 from numpy import *
 
 def gmshcall(pde, filename, nd, elemtype):
