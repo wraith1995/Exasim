@@ -135,7 +135,7 @@ def git_url(plain_url, protocol):
         raise ValueError("Unknown git protocol: %s" % protocol)
 
 
-def git_clone(name, plain_url, branch):
+def git_clone(name, plain_url, branch, update=False):
     log.info("Cloning %s\n" % name)
     try:
         check_call(["git", "clone", "-q", "--recursive", git_url(plain_url, "https")])
@@ -219,7 +219,12 @@ parser.add_argument("--no-package-manager", action='store_false', dest="package_
 
 parser.add_argument("--exasim-directory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, help="Where to put Exasim!", dest="exasim_directory", help="Location that exasim is already installed in or where you want to install it.")
 parser.add_argument("--exasim-branch", action="store", type=str, default="master", help="Branch of Exasim to install")
-parser.add_argument("--exasim-present", action="store_true", default=False, help="Do not clone exasim; Just rerun install as if clone has just been finished.")
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--install", action="store_true", default=False, help="Download Exasim + dependencies, and then configure, and then build.")
+group.add_argument("--update", action="store_true", default=False, help="Do not clone exasim; Just rerun install as if clone has just been finished (though we will try to update this clone)")
+group.add_argument("--configure", action="store_true", default=False, help="Assume Exasim is installed and all depends are present; just regenerate configuration")
+group.add_argument("--build", action="store_true", default=False, help="Assume Exasim is installed and all depends are present and configuration is done; regenerate library files produced by Exasim")
+
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
                         help="C compiler to use.. if not, gcc will be used")
@@ -297,7 +302,20 @@ def check_args(arg):
         raise InstallError("If a c compiler is set, a c++ compiler must be set. And vice-versa.")
     if (arg.mpicc is None) != (arg.mpicxx is None) and (arg.mpiexec is None) != (arg.mpicc is None):
         raise InstallError("If any mpi system is set, they must all be set. And vice-versa.")
-    
+
+    install, update, configure, build = False, False, False, False
+    if arg.install:
+        install, update, configure, build= True, True, True, True
+    if args.update:
+        update, configure, build = True, True, True
+    if args.configure:
+        configure, build = True, True
+    if args.build:
+        build = True
+    if not any([install, update, configure, build]):
+        raise InstallError("You must pick one of install, update, confiugure, build")
+    else:
+        return(install, update, configure, build)
 
 def check_package_manager(args):
     if args.package_manager:
@@ -366,13 +384,16 @@ def install_packages(env, args, python, julia, matlab):
 
 def create_exasim_dir(args):
     location = directory(args.exasim_directory)
-    if not args.exasim_present:
+    if args.install
         branch = "scheduling"
         exasim_url="github.com/wraith1995/Exasim.git"
         exasim_dir = "Exasim"
         with location:
             git_clone(exasim_dir, exasim_url, branch)
+    
     exasim_location = location.lower("Exasim")
+    if args.update:
+        git_update("Exasim")
     return exasim_location
 
 def find_executable(name, extra_extra_paths="", required=True):
@@ -504,39 +525,44 @@ Steps:
 def main():
     args = parser.parse_args()
     dump_env()
-    check_args(args)
+    (install, update, configure, build) = check_args(args)
     (python, julia, matlab) = check_pl(args)
-    exasim_dir = create_exasim_dir(args)
+    exasim_dir = create_exasim_dir(args) # uses args to figure install,update
     env = init_env(args)
-    check_package_manager(args)
-    install_packages(env, args, python, julia, matlab)
+    if update:
+        check_package_manager(args)
+        install_packages(env, args, python, julia, matlab)
     find_languages(env, args, python, julia, matlab)
-    language_packages(env, python, julia, matlab)
+    if update:
+        language_packages(env, python, julia, matlab)
     with exasim_dir:
-        if not args.exasim_present:
+        if install:
             os.mkdir("External")
         deps = exasim_dir.lower("External")
         with deps:
             #install external depends here.
+            # Try to respect update vs. install?
             #e.g LLVM, CLANG, Halide, Tiramisu, Julia, Matlab
             pass
         setup_compilers(args, env) #This is here because in the future we will want to include compiler info from downloaded compilers
         check_compilers(env)
         setup_external_packages(args, env)
         check_external_packages(env)
-
-        if julia:
-            with exasim_dir.lower("src/Julia/Preprocessing"):
-                log.info("Generating Julia constants file")
-                gen_constants_file(env, "constants.jl")
-        if matlab:
-            with exasim_dir.lower("src/Julia/Preprocessing"):
-                log.info("Generating Matlab constants file")
-                gen_constants_file(env, "constants.m")
-        if python:
-            with exasim_dir.lower("src/Python/Preprocessing"):
-                log.info("Generating Python constants file")
-                gen_constants_file(env, "constants.py")
+        if configure:
+            if julia:
+                with exasim_dir.lower("src/Julia/Preprocessing"):
+                    log.info("Generating Julia constants file")
+                    gen_constants_file(env, "constants.jl")
+            if matlab:
+                with exasim_dir.lower("src/Julia/Preprocessing"):
+                    log.info("Generating Matlab constants file")
+                    gen_constants_file(env, "constants.m")
+            if python:
+                with exasim_dir.lower("src/Python/Preprocessing"):
+                    log.info("Generating Python constants file")
+                    gen_constants_file(env, "constants.py")
+        if build:
+            pass
 
 if __name__ == "__main__":
     main()
