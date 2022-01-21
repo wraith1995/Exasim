@@ -225,6 +225,10 @@ group.add_argument("--update", action="store_true", default=False, help="Do not 
 group.add_argument("--configure", action="store_true", default=False, help="Assume Exasim is installed and all depends are present; just regenerate configuration")
 group.add_argument("--build", action="store_true", default=False, help="Assume Exasim is installed and all depends are present and configuration is done; regenerate library files produced by Exasim")
 
+parser.add_argument("--cxxcoreflags", actions="store", nargs="+", type=str, default=["-fPIC", "-O3"], help="Arguments for the C++ compiler when compiling core")
+parser.add_argument("--gpucoreflags", actions="store", nargs="+", type=str, default=["-D_FORCE_INLINES","-O3"], help="Arguments for the GPU compiler when compiling core")
+parser.add_argument("--gpucxxcoreflags", actions="store", nargs="+", type=str, default=["-fPIC"], help="Arguments for GPU compilers to C++ compiler when compiling core")
+
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
                         help="C compiler to use.. if not, gcc will be used")
@@ -243,7 +247,11 @@ parser.add_argument("--mpiexec", type=file_path,
                     help="MPI launcher. If not set and MPI is enabled, MPICH or openmpi will be downloaded and used.")
 parser.add_argument("--with-blas-lapack", default=None, type=dir_path,
                     help="Specify path to system BLAS/LAPACK directory. Combined because openblas combines them if manually installed correctly.")
-parser.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC binary. If not set, GPU will not be enabled.")
+
+#NVCC args
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--with-nvcc", default=None, type=file_path, action="store", help="NVCC binary. If not set or the system nvcc is not used, GPU will not be enabled.")
+group.add_argument("--system-nvcc", default=False, action="store_truee", help="Find the NVCC binary in the current PATH.")
 
 ##Optional packages: should we install xor should we use a binary you point us to?
 group = parser.add_mutually_exclusive_group()
@@ -418,6 +426,8 @@ def setup_compilers(args, env): #find compilers that are not just set with --cc,
         pass
     else:
         env["cxx"] = find_executable("g++")
+    if args.system_nvcc is not None:
+        env["nvcc"] = find_executable("nvcc")
     if args.mpi:
         env["mpicc"] = find_executable("mpicc")
         env["mpicxx"] = find_executable("mpicxx")
@@ -498,6 +508,7 @@ def init_env(args):
     #Potentially otheruseful things
     env["PATH"] = None
     env["LD_LIBRARY_PATH"] = None
+    env["OS"] = osname
     return env
 
 
@@ -521,7 +532,10 @@ Steps:
 10. Setup the compiler env and check the compilers
 11. Setup the external package env and check them
 12. Generate a constants file for use by exasim
+13. Build Core files
 """
+
+
 def main():
     args = parser.parse_args()
     dump_env()
@@ -562,7 +576,30 @@ def main():
                     log.info("Generating Python constants file")
                     gen_constants_file(env, "constants.py")
         if build:
-            pass
+            with exasim_dir.lower("lib"):
+                #Build CPU:
+                log.info("Compiling commonCore.cpp")
+                check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "commonCore.cpp", "-o", "commonCore.o"])
+                # log.info("Archiving into .o")
+                # check_call(["ar", "rvs", "commonCore.a", "commonCore.o"]
+                )
+                log.info("Compiling opuCore.cpp")
+                check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "opuCore.cpp", "-o", "opuCore.o"])
+                # log.info("Archiving into .o")
+                # check_call(["ar", "rvs", "opuCore.a", "opuCore.o"])
+                log.info("Making os directory")
+                os.mkdir(osname)
+                log.info("Copyign files to os director")
+                shutil.copy("commonCore.o", osname + "/commonCore.o")
+                shutil.copy("opuCore.o", osname + "/opuCore.o")
+                if env["nvcc"] is not None:
+                    log.info("Compiling gpuCore.cu")
+                    check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuCore.cu", "-o", "gpuCore.o"])
+                    shutil.copy("gpuCore.o", osname + "/gpuCore.o")
+                
+
+                
+                
 
 if __name__ == "__main__":
     main()
