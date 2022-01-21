@@ -10,7 +10,7 @@ def initializepde(version):
     pde['mpirun'] = constants.mpiexec;
     pde['gmsh'] = constants.gmsh;
     pde['metis'] = constants.metis;
-    pde['paraview'] = constant.paraview;
+    pde['paraview'] = constants.paraview;
     pde['enzyme'] = [];
 
     pde['codename'] = "Exasim";
