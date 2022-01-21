@@ -279,7 +279,7 @@ def dump_env():
             log.debug("Var %s = %s" % (k, os.environ[k]))
         else:
             log.info("Var PATH = %s" % os.environ[k])
-    log.denug("Dumped OS Enviroment!")
+    log.debug("Dumped OS Enviroment!")
 
     
 def check_pl(args):
