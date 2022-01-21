@@ -13,7 +13,7 @@ def exasim(pde,mesh):
     res = None;
     if nmodels == 1:
         # search compilers and set options
-        pde = Gencode.setcompilers(pde);
+        #pde = Gencode.setcompilers(pde);
 
         # generate input files and store them in datain folder
         pde, mesh, master, dmd = Preprocessing.preprocessing(pde,mesh);
