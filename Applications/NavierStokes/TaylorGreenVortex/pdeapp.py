@@ -3,7 +3,7 @@ import numpy, os
 from numpy import pi
 # import internal modules
 
-from PyExasim from PyExasim import Preprocessing, Postprocessing, Gencode, Mesh
+from PyExasim import Preprocessing, Postprocessing, Gencode, Mesh
 
 # Create pde object and mesh object
 pde,mesh = Preprocessing.initializeexasim();
