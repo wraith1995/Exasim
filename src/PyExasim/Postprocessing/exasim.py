@@ -22,7 +22,7 @@ def exasim(pde,mesh):
         Gencode.gencode(pde);
 
         # compile source codes to build an executable file and store it in app folder
-        compilerstr = Gencode.compilecode(pde);
+        compilerstr = Gencode.compilecode1(pde);
 
         # run executable file to compute solution and store it in dataout folder
         runstr = Gencode.runcode(pde, nmodels);

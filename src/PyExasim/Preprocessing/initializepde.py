@@ -5,6 +5,8 @@ def initializepde(version):
     pde = {'codename' : [], 'version' : []};
 
     pde['srcdir'] = exasim
+    pde['OS'] = OS
+    pde['ARCH'] = ARCH
     pde['cpucompiler']  = cxx;
     pde['mpicompiler'] = mpicxx;
     pde['gpucompiler'] = nvcc;

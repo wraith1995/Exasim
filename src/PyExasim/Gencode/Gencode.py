@@ -22,7 +22,7 @@ from .gencodeface2 import gencodeface2
 from .nocodeface2 import nocodeface2
 
 def gencode(app):
-
+    app["appdir"] = os.path.abspath("app")
     if os.path.isdir("app")==False:
         os.mkdir("app")
     else:
