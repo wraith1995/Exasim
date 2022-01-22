@@ -4,6 +4,7 @@ def initializepde(version):
 
     pde = {'codename' : [], 'version' : []};
 
+    pde['srcdir'] = exasim
     pde['cpucompiler']  = cxx;
     pde['mpicompiler'] = mpicxx;
     pde['gpucompiler'] = nvcc;
@@ -21,8 +22,8 @@ def initializepde(version):
     pde['modelfile'] = "";
     pde['platform'] = "cpu";
     #pde['cpuflags'] = "-O2 -Wall -ldl -lm -lblas -llapack";
-    pde['cpuflags'] = "-O2 -ldl -lm -lblas -llapack";
-    pde['gpuflags'] = "-lcudart -lcublas";
+    pde['cpuflags'] = cpuflags
+    pde['gpuflags'] = gpuflags
 
     pde['usecmake'] = 0;
     pde['buildexec'] = 0;

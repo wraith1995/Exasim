@@ -229,6 +229,13 @@ parser.add_argument("--cxxcoreflags", nargs="+", type=str, default=["-fPIC", "-O
 parser.add_argument("--gpucoreflags", nargs="+", type=str, default=["-D_FORCE_INLINES","-O3"], help="Arguments for the GPU compiler when compiling core")
 parser.add_argument("--gpucxxcoreflags", nargs="+", type=str, default=["-fPIC"], help="Arguments for GPU compilers to C++ compiler when compiling core")
 
+
+parser.add_argument("--cxxflags", nargs="+", type=str, default="-O2 -ldl -lm -lblas -llapack".split(" "), help="Default cxx flags to use")
+parser.add_argument("--gpuflags", nargs="+", type=str, default=["-lcudart", "-lcublas"], help="Default nvcc flags to use")
+parser.add_argument("--includes", nargs="+", type=directory, default=[], help="Default include directories")
+parser.add_argument("--libs", nargs="+", type=directory, default=[], help="Default library directories")
+#mpi flags?
+
 parser.add_argument("--cc", type=file_path,
                         action="store", default=None,
                         help="C compiler to use.. if not, gcc will be used")
@@ -485,8 +492,9 @@ def language_packages(env, python, julia, matlab):
         log.warning("Install Matlab Symbolic Math Toolkit on your pown")
     
 
-def init_env(args):
+def init_env(args, exasim_dir):
     env = dict()
+    env["exasim"] = str(exasim_dir.dir)
     #compilers:
     env["cc"] = args.cc
     env["cxx"] = args.cxx
@@ -494,6 +502,9 @@ def init_env(args):
     env["mpicxx"] = args.mpicxx
     env["mpiexec"] = args.mpiexec
     env["nvcc"] = args.with_nvcc
+
+    env["cpuflags"] = args.cxxflags + ["-I{0}".format(f.dir) for f in args.includes] + ["-L{0}".format(f.dir) for f in args.libs]
+    env["gpuflags"] = args.gpuflags + ["-I{0}".format(f.dir) for f in args.includes] + ["-L{0}".format(f.dir) for f in args.libs]
 
     #external:
     env["metis"] = args.with_metis
@@ -516,7 +527,13 @@ def init_env(args):
 def gen_constants_file(env, f):
     with open(f, "w") as c:
         for (k,v) in env.items():
-            c.write("{0}=\"{1}\"\n".format(k, str(v)))
+            if type(v) is list:
+                vv = " ".join(v)
+            elif v is None:
+                vv = ""
+            else:
+                vv = str(v)
+            c.write("{0}=\"{1}\"\n".format(k, vv))
 
 """
 Steps:
@@ -543,7 +560,7 @@ def main():
     (install, update, configure, build) = check_args(args)
     (python, julia, matlab) = check_pl(args)
     exasim_dir = create_exasim_dir(args) # uses args to figure install,update
-    env = init_env(args)
+    env = init_env(args, exasim_dir)
     if update:
         check_package_manager(args)
         install_packages(env, args, python, julia, matlab)
@@ -581,21 +598,37 @@ def main():
                 #Build CPU:
                 log.info("Compiling commonCore.cpp")
                 check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "commonCore.cpp", "-o", "commonCore.o"])
-                # log.info("Archiving into .o")
-                # check_call(["ar", "rvs", "commonCore.a", "commonCore.o"]
                 log.info("Compiling opuCore.cpp")
                 check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "opuCore.cpp", "-o", "opuCore.o"])
-                # log.info("Archiving into .o")
-                # check_call(["ar", "rvs", "opuCore.a", "opuCore.o"])
                 log.info("Making os directory")
                 os.mkdir(osname)
-                log.info("Copyign files to os director")
+                osdir = exasim_dir.lower("lib/{0}".format(osname))
+                log.info("Copying files to os directory")
                 shutil.move("commonCore.o", osname + "/commonCore.o")
                 shutil.move("opuCore.o", osname + "/opuCore.o")
+                
+                
                 if env["nvcc"] is not None:
                     log.info("Compiling gpuCore.cu")
                     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuCore.cu", "-o", "gpuCore.o"])
+                    log.info("Copying gpu files to os directory")
                     shutil.move("gpuCore.o", osname + "/gpuCore.o")
+            #build cpu, opu, gpu APP
+            # with exasim_dir.lower("src/Kernel/AppDriver"):
+            #     log.info("Compiling opuApp.cpp")
+            #     check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "cpuApp.cpp", "-o", "cpuApp.o"])
+            #     log.info("Moving cpuApp")
+            #     shutil.move("cpuApp.o", osdir.dir + "/cpuApp.o")
+                # log.info("Compiling opuApp.cpp")
+                # check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "opuApp.cpp", "-o", "opuApp.o"])
+                # log.info("Moving opuApp")
+                # shutil.move("opuApp.o", osdir.dir + "/opuApp.o")
+                # if env["nvcc"] is not None:
+                #     log.info("Compiling gpuApp.cu")
+                #     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuApp.cu", "-o", "gpuApp.o"])
+                #     log.info("Moving gpuApp")
+                #     shutil.move("gpuApp.o", osdir.dir + "/gpuApp.o")
+                                                        
         if python:
             print("Run 'source {0}/utils/scripts/pyactivate.sh' to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
