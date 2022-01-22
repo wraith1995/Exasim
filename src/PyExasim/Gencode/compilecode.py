@@ -13,28 +13,38 @@ log = logging.getLogger()
 def check_call(arguments):
     try:
         log.debug("Running command '%s'", " ".join(arguments))
-        log.debug(subprocess.check_output(arguments, stderr=subprocess.STDOUT, shell=shell, env=os.environ).decode())
+        log.debug(subprocess.check_output(arguments, stderr=subprocess.STDOUT, shell=False, env=os.environ).decode())
     except subprocess.CalledProcessError as e:
         log.debug(e.output.decode())
         raise
 
-def compilefiles(compiler, target, srcfile, dflags=[],srcobjects=[], flags=[], ocompilerflags=[]):
-    args = [compiler] + dflags + ["-c"] + ocompilerflags + [srcfile]
+def compilefiles(compiler, target, srcfile, link=False, dflags=[],srcobjects=[], flags=[], ocompilerflags=[]):
+    args = [compiler] + dflags
+    if link:
+        args += [srcfile]
+    else:
+        if ocompilerflags != []:
+            qouted = ["'{0}'".format(x) for x in ocompilerflags]
+            extraflags = ["--compiler-options"] + qouted
+        else:
+            extraflags = []
+        args += ["-c"] + extraflags + [srcfile]
     args += ["-o", target] + srcobjects
     args += flags
     check_call(args)
 
 def compilecode1(app):
     srcdir = app["srcdir"] + "/"
+
     osname = app["OS"]
     driverdir = srcdir + "src/Kernel/AppDriver/"
     libdir = srcdir + "lib/" + osname + "/"
-    maindir = srcdir + "src/Kernerl/Main/"
+    maindir = srcdir + "src/Kernel/Main/"
     mainfile = maindir + "main.cpp"
     applicationdir = app["appdir"] + "/"
-    
+    arch = app["platform"]
     log.info("Compiling Code in {0}".format(applicationdir))
-    
+    os.chdir(applicationdir)
     codename = app['codename']    
     version = app['version']
     appname = app['appname']
@@ -51,27 +61,37 @@ def compilecode1(app):
     
     shutil.copyfile(driverdir  + "opuApp.cpp", applicationdir + "opuApp.cpp")
     shutil.copyfile(driverdir  + "cpuApp.cpp", applicationdir + "cpuApp.cpp")
-    shutil.copyfile(driverdir  + "gpuApp.cpp", applicationdir + "gpuApp.cpp")
+    if arch == "gpu":
+        shutil.copyfile(driverdir  + "gpuApp.cu", applicationdir + "gpuApp.cu")
 
     log.info("Copying object files from lib dir ({0})".format(libdir))
     shutil.copyfile(libdir + "commonCore.o", applicationdir + "commonCore.o")
     shutil.copyfile(libdir + "opuCore.o", applicationdir + "opuCore.o")
-    if gpucompiler is not "":
+    if arch == "gpu":
         shutil.copyfile(libdir + "gpuCore.o", applicationdir + "gpuCore.o")
-    
     
     log.info("Compiling opuApp.cpp")
     compilefiles(cpucompiler, "opuApp.o", "opuApp.cpp", flags=cpuflags)
-    if app['platform'] == "cpu":
-        info.log("Compiling for cpu")
+    if arch == "cpu":
+        log.info("Compiling for CPU")
         if mpiprocs == 1:
-            compilefiles(cpucompiler, "serial" + appname, mainfile, flags=cpuflags + ["--std=c++"], srcobjects=["commonCore.o", "opuCore.o", "opuApp.o"])
-            pass
+            compilefiles(cpucompiler, "serial" + appname, mainfile, link=True, flags=cpuflags, srcobjects=["commonCore.o", "opuCore.o", "opuApp.o"])
         else:
-            pass
-    
-    
-    
+            log.info("Compiling for MPI-CPU")
+            compilefiles(mpicompiler, "mpi" + appname, mainfile, link=True, dflags=["-D _MPI"], flags=cpuflags,srcobjects=["commonCore.o", "opuCore.o", "opuApp.o"])
+
+    elif arch == "gpu":
+        log.info("Compiling for GPU")
+        compilefiles(gpucompiler, "gpuApp.o", "gpuApp.cu", dflags=["-D_FORCE_INLINES"], flags=gpuflags, ocompilerflags=cpuflags)
+        if mpiprocs == 1:
+            copmilefiles(cpucompiler, "gpu" + appname, mainfile, link=True, dflags=["-D _CUDA"], flags=cpuflags + gpuflags, srcobjects=["opuCore.o", "opuApp.o", "gpuApp.o", "commonCore.o", "gpuCore.o"])
+        else:
+            log.info("Compiling for MPI-GPU")
+            copmilefiles(mpicompiler, "gpumpi" + appname, mainfile, link=True, dflags=["-D _MPI", "-D _CUDA"], flags=cpuflags + gpuflags, srcobjects=["opuCore.o", "opuApp.o", "gpuApp.o", "commonCore.o", "gpuCore.o"])
+    else:
+        log.error("Unrecgonized architecture")
+        raise Exception("UA")
+    os.chdir("..")
 
 
 def compilecode(app):

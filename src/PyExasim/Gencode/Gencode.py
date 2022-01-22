@@ -1,11 +1,10 @@
-
 import os, sys, numpy
 from sympy import *
 from importlib import import_module
 import importlib.util
 from .checkcompilers import checkcompilers
 from .setcompilers import setcompilers
-from .compilecode import compilecode
+from .compilecode import compilecode, compilecode1
 from .runcode import runcode
 from .gencodeall import gencodeall
 from .syminit import syminit
