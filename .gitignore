@@ -1,3 +1,5 @@
+**/app
+**/datain
 *.pyc
 *.vtu
 *.DS_Store
