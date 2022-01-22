@@ -527,13 +527,13 @@ def init_env(args, exasim_dir):
 def gen_constants_file(env, f):
     with open(f, "w") as c:
         for (k,v) in env.items():
-            if type(v) is list:
-                vv = " ".join(v)
-            elif v is None:
-                vv = ""
+            if v is None:
+                c.write("{0}=\"\"\n".format(k))
+            elif type(v) is list:
+                c.write("{0}={1}\n".format(k, v))
             else:
                 vv = str(v)
-            c.write("{0}=\"{1}\"\n".format(k, vv))
+                c.write("{0}=\"{1}\"\n".format(k, vv))
 
 """
 Steps:
@@ -569,7 +569,10 @@ def main():
         language_packages(env, python, julia, matlab)
     with exasim_dir:
         if install:
-            os.mkdir("External")
+            try:
+                os.mkdir("External")
+            except FileExistsError:
+                pass
         deps = exasim_dir.lower("External")
         with deps:
             #install external depends here.
@@ -601,7 +604,10 @@ def main():
                 log.info("Compiling opuCore.cpp")
                 check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "opuCore.cpp", "-o", "opuCore.o"])
                 log.info("Making os directory")
-                os.mkdir(osname)
+                try:
+                    os.mkdir(osname)
+                except FileExistsError:
+                    pass
                 osdir = exasim_dir.lower("lib/{0}".format(osname))
                 log.info("Copying files to os directory")
                 shutil.move("commonCore.o", osname + "/commonCore.o")
