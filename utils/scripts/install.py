@@ -572,7 +572,7 @@ Steps:
 10. Setup the compiler env and check the compilers
 11. Setup the external package env and check them
 12. Generate a constants file for use by exasim
-13. Build Core files
+13. Generate activation script (put things in the right path (e.g. halide, pythonpath))
 """
 
 
@@ -619,7 +619,7 @@ def buildllvm(args, env):
     
 def buildhalide(args, env, llvmprefix):
     if args.with_halide is not None:
-        env["halidebuild"] = directory(args.with_halide.dir + "/src")
+        env["halidebuild"] = directory(args.with_halide.dir) #src, include,
         env["halidepybinds"] = directory(args.with_halide.dir + "/python_bindings/src")
     elif not args.build_halide:
         pass
@@ -641,13 +641,30 @@ def buildhalide(args, env, llvmprefix):
                      "build"])
             log.info("Building Halide")
             run_cmd(["cmake", "--build", "build", "-j", str(args.cores)])
-            halidebuild = directory("build/src")
+            halidebuild = directory("build/")
             halidepybinds = directory("build/python_bindings/src")
             env["halidebuild"] = halidebuild.dir
             env["halidepybinds"] = halidepybinds.dir
 
-#write our halide
-#writhe pyactivate.sh
+def gen_pyactivate(env, exasim_dir):
+    with exasim_dir:
+        pypath = []
+        path = []
+        ldpath = []
+        pyexasim = exasim_dir.lower("src/")
+        pypath.append(pyexasim)
+        if "halidepybinds" in env:
+            pypath.append(env["halidepybinds"])
+        if "halidebuild" in env:
+            ldpath.append(env["halidebuild"])
+        with exasim_dir.lower("utils/scripts/"):
+            with open("pyactivate.sh", "w") as f:
+                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join(pypath)))
+                if len(path) != 0:
+                    f.write("export PATH={0}:$PATH\n".format(":".join(path)))
+                if len(ldpath) != 0:
+                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(ldpath)))
+    
 
 def main():
     args = parser.parse_args()
@@ -670,11 +687,11 @@ def main():
                 pass
         deps = exasim_dir.lower("External")
         with deps:
-            buildllvm(args, env)
+            llvmprefix = buildllvm(args, env)
+            buildhalide(args, env, llvmprefix)
             #install external depends here.
             # Try to respect update vs. install?
             #e.g LLVM, CLANG, Halide, Tiramisu, Julia, Matlab
-            pass
         setup_compilers(args, env) #This is here because in the future we will want to include compiler info from downloaded compilers
         check_compilers(env)
         setup_external_packages(args, env)
@@ -716,6 +733,7 @@ def main():
                     log.info("Copying gpu files to os directory")
                     shutil.move("gpuCore.o", osname + "/gpuCore.o")                                                        
         if python:
+            gen_pyactivate(env, exasim_dir)
             print("Run 'source {0}/utils/scripts/pyactivate.sh' to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
     main()
