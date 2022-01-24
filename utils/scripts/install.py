@@ -279,7 +279,7 @@ group.add_argument("--with-llvm", default=None, action="store", type=dir_path, h
 
 
 group = parser.add_mutually_exclusive_group()
-group.add_argument("--build-halide", default=None, action="store", type=str, help="Build our own Halide. Requires LLVM")
+group.add_argument("--build-halide", default=False, action="store_true", help="Build our own Halide. Requires LLVM")
 group.add_argument("--with-halide", default=None, action="store", type=dir_path, help="Path to Halide build path")
 
 #programming languages:
@@ -621,7 +621,7 @@ def buildhalide(args, env, llvmprefix):
     if args.with_halide is not None:
         env["halidebuild"] = directory(args.with_halide.dir + "/src")
         env["halidepybinds"] = directory(args.with_halide.dir + "/python_bindings/src")
-    elif args.build_halide is None:
+    elif not args.build_halide:
         pass
     else:
         os.mkdir("halide")
