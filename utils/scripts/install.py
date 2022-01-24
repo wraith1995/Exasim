@@ -271,6 +271,17 @@ group = parser.add_mutually_exclusive_group()
 group.add_argument("--system_paraview", action="store_true", dest="system_paraview")
 group.add_argument("--with-paraview", default=None, type=file_path, action="store")
 
+parser.add_argument("--cores", action="store", type=int, default=4, help="Number of cores to use when building things.")
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--build-llvm", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.")
+group.add_argument("--with-llvm", default=None, action="store", type=dir_path, help="LLVM+Clang prefix directory")
+
+
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--build-halide", default=None, action="store", type=str, help="Build our own Halide. Requires LLVM")
+group.add_argument("--with-halide", default=None, action="store", type=dir_path, help="Path to Halide build path")
+
 #programming languages:
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--system-python", action="store_true", dest="system_python")
@@ -373,7 +384,7 @@ def install_packages(env, args, python, julia, matlab):
     if args.system_python:
         packages.append("python3")
         packages.append("python3-dev")
-        packages.append("pthon3-pip")
+        packages.append("python3-pip")
     if args.cc is None and args.cxx is None:
         linux_or_mac(packages, "gcc", "build-essential")
     if args.with_blas_lapack is None:
@@ -425,12 +436,16 @@ def find_executable(name, extra_extra_paths="", required=True):
     except Exception as e:
         raise InstallError("Failed to find {0} because of {1}".format(name, e))
 def setup_compilers(args, env): #find compilers that are not just set with --cc, --cxx, etc...
-    if args.cc is not None:
+    if args.cc is not None or args.build_llvm is not None:
         pass
+    elif args.with_llvm is not None:
+        env["cc"] = args.with_llvm + "/bin/clang"
     else:
         env["cc"] = find_executable("gcc")
-    if args.cxx is not None:
+    if args.cxx is not None or args.build_llvm is not None:
         pass
+    elif args.with_llvm is not None:
+        env["cxx"] = args.with_llvm + "/bin/clang++"
     else:
         env["cxx"] = find_executable("g++")
     if args.system_nvcc:
@@ -547,12 +562,92 @@ Steps:
 7. Check the languages we want are present and add them to the env if needed
 8. Add packages required by these programming languages
 9. Install external dependieces that can't be included via standard means
+9.1. LLVM
+9.3. Tapiar
+9.3. Halide (Rectangular mat-vec generate mode)
+9.4. Enzyme Mode
+9.5 Tiramisu
+9.6 GPU profiling mode
+9.7 Debug mode
 10. Setup the compiler env and check the compilers
 11. Setup the external package env and check them
 12. Generate a constants file for use by exasim
 13. Build Core files
 """
 
+
+def buildllvm(args, env):
+    if args.with_llvm is not None:
+        with directory(args.with_llvm):
+            env["llvm_dir"] = llvmprefix.dir
+            env["cc"] = llvmprefix.dir + "/bin/clang"
+            env["cxx"] = llvmprefix.dir + "/bin/clang++"
+            return llvmprefix
+    if args.build_llvm is None:
+        return None
+    os.mkdir("llvm")
+    with directory("llvm"):
+        log.info("Cloning LLVM release/12.x")
+        run_cmd(["git", "clone", "--depth","1","--branch", "{0}".format(args.build_llvm), "https://github.com/llvm/llvm-project.git"])
+        os.mkdir("build")
+        os.mkdir("prefix")
+        llvmprefix = directory("prefix")
+        with directory("build"):
+            log.info("Configuring LLVM.")
+            run_cmd(["cmake",
+                     "-G", "Ninja",
+                     "-S","../llvm-project/llvm",
+                     "-DHAVE_LIBEDIT=0",
+                     "-DLLVM_ENABLE_TERMINFO=OFF",
+                     "-DLLVM_ENABLE_PROJECTS='clang;lld;clang-tools-extra'",
+                     "-DLLVM_ENABLE_EH=ON",
+                     "-DLLVM_ENABLE_RTTI=ON",
+                     "-DLLVM_BUILD_32_BITS=OFF",
+                     "-DLLVM_TARGETS_TO_BUILD='X86;ARM;AArch64;Mips;NVPTX;PowerPC'",
+                     "-DLLVM_ENABLE_ASSERTIONS=ON",
+                     "-DLLVM_ENABLE_PLUGINS=ON",
+                     "-DCMAKE_BUILD_TYPE=Release",
+                     "-DCMAKE_INSTALL_PREFIX={0}".format(llvmprefix.dir)])
+            log.info("Building LLVM.")
+            run_cmd(["cmake", "--build", ".", "-j", "{0}".format(args.cores)])
+            log.info("Installing llvm")
+            run_cmd(["cmake", "--install", "."])
+            env["llvm_dir"] = llvmprefix.dir
+            env["cc"] = llvmprefix.dir + "/bin/clang"
+            env["cxx"] = llvmprefix.dir + "/bin/clang++"
+        return llvmprefix
+    
+def buildhalide(args, env, llvmprefix):
+    if args.with_halide is not None:
+        env["halidebuild"] = directory(args.with_halide.dir + "/src")
+        env["halidepybinds"] = directory(args.with_halide.dir + "/python_bindings/src")
+    elif args.build_halide is None:
+        pass
+    else:
+        os.mkdir("halide")
+        with directory("halide"):
+            os.mkdir("build")
+            log.info("Cloning Halide")
+            run_cmd(["git", "clone", "https://github.com/halide/Halide.git"])
+            log.info("Configuring Halide")
+            run_cmd(["cmake",
+                     "-G",
+                     "Ninja",
+                     "-DCMAKE_BUILD_TYPE=Release",
+                     "-DLLVM_DIR={0}/lib/cmake/llvm".format(llvmprefix.dir),
+                     "-S",
+                     ".",
+                     "-B",
+                     "build"])
+            log.info("Building Halide")
+            run_cmd(["cmake", "--build", "build", "-j", str(args.cores)])
+            halidebuild = directory("build/src")
+            halidepybinds = directory("build/python_bindings/src")
+            env["halidebuild"] = halidebuild.dir
+            env["halidepybinds"] = halidepybinds.dir
+
+#write our halide
+#writhe pyactivate.sh
 
 def main():
     args = parser.parse_args()
@@ -575,6 +670,7 @@ def main():
                 pass
         deps = exasim_dir.lower("External")
         with deps:
+            buildllvm(args, env)
             #install external depends here.
             # Try to respect update vs. install?
             #e.g LLVM, CLANG, Halide, Tiramisu, Julia, Matlab
@@ -618,23 +714,7 @@ def main():
                     log.info("Compiling gpuCore.cu")
                     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuCore.cu", "-o", "gpuCore.o"])
                     log.info("Copying gpu files to os directory")
-                    shutil.move("gpuCore.o", osname + "/gpuCore.o")
-            #build cpu, opu, gpu APP
-            # with exasim_dir.lower("src/Kernel/AppDriver"):
-            #     log.info("Compiling opuApp.cpp")
-            #     check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "cpuApp.cpp", "-o", "cpuApp.o"])
-            #     log.info("Moving cpuApp")
-            #     shutil.move("cpuApp.o", osdir.dir + "/cpuApp.o")
-                # log.info("Compiling opuApp.cpp")
-                # check_call([env["cxx"]] + args.cxxcoreflags + ["-c", "opuApp.cpp", "-o", "opuApp.o"])
-                # log.info("Moving opuApp")
-                # shutil.move("opuApp.o", osdir.dir + "/opuApp.o")
-                # if env["nvcc"] is not None:
-                #     log.info("Compiling gpuApp.cu")
-                #     check_call([env["nvcc"]] + args.gpucoreflags + ["-c", "--compiler-options"] + ["'{0}'".format(f) for f in args.gpucxxcoreflags] + ["gpuApp.cu", "-o", "gpuApp.o"])
-                #     log.info("Moving gpuApp")
-                #     shutil.move("gpuApp.o", osdir.dir + "/gpuApp.o")
-                                                        
+                    shutil.move("gpuCore.o", osname + "/gpuCore.o")                                                        
         if python:
             print("Run 'source {0}/utils/scripts/pyactivate.sh' to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
