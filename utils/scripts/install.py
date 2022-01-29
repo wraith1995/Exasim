@@ -48,6 +48,8 @@ class directory(object):
         self.dir = os.path.abspath(dir)
     def lower(self, n):
         return directory(self.dir + "/" +  n)
+    def __str__(self):
+        return str(self.dir)
 
     def __enter__(self):
         self.olddir = os.path.abspath(os.getcwd())
@@ -275,6 +277,7 @@ parser.add_argument("--cores", action="store", type=int, default=4, help="Number
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--build-llvm", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.")
+group.add_argument("--build-llvm-opencilk", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.")
 group.add_argument("--with-llvm", default=None, action="store", type=dir_path, help="LLVM+Clang prefix directory")
 
 
@@ -436,13 +439,13 @@ def find_executable(name, extra_extra_paths="", required=True):
     except Exception as e:
         raise InstallError("Failed to find {0} because of {1}".format(name, e))
 def setup_compilers(args, env): #find compilers that are not just set with --cc, --cxx, etc...
-    if args.cc is not None or args.build_llvm is not None:
+    if args.cc is not None or args.build_llvm is not None or args.build_llvm_opencilk is not None:
         pass
     elif args.with_llvm is not None:
         env["cc"] = args.with_llvm + "/bin/clang"
     else:
         env["cc"] = find_executable("gcc")
-    if args.cxx is not None or args.build_llvm is not None:
+    if args.cxx is not None or args.build_llvm is not None or args.build_llvm_opencilk is not None:
         pass
     elif args.with_llvm is not None:
         env["cxx"] = args.with_llvm + "/bin/clang++"
@@ -583,12 +586,15 @@ def buildllvm(args, env):
             env["cc"] = llvmprefix.dir + "/bin/clang"
             env["cxx"] = llvmprefix.dir + "/bin/clang++"
             return llvmprefix
-    if args.build_llvm is None:
+    if args.build_llvm is None and args.build_llvm_opencilk is None:
         return None
     os.mkdir("llvm")
     with directory("llvm"):
         log.info("Cloning LLVM release/12.x")
-        run_cmd(["git", "clone", "--depth","1","--branch", "{0}".format(args.build_llvm), "https://github.com/llvm/llvm-project.git"])
+        llvmbranch = args.build_llvm_opencilk or args.build_llvm
+        llvmgit = "https://github.com/llvm/llvm-project.git" if args.build_llvm is not None else "https://github.com/OpenCilk/opencilk-project.git"
+        llvmfile = "llvm-project" if args.build_llvm is not None else "opencilk-project"
+        run_cmd(["git", "clone", "--depth","1","--branch", "{0}".format(llvmbranch), llvmgit])
         os.mkdir("build")
         os.mkdir("prefix")
         llvmprefix = directory("prefix")
@@ -596,7 +602,7 @@ def buildllvm(args, env):
             log.info("Configuring LLVM.")
             run_cmd(["cmake",
                      "-G", "Ninja",
-                     "-S","../llvm-project/llvm",
+                     "-S","../{0}/llvm".format(llvmfile),
                      "-DHAVE_LIBEDIT=0",
                      "-DLLVM_ENABLE_TERMINFO=OFF",
                      "-DLLVM_ENABLE_PROJECTS='clang;lld;clang-tools-extra'",
@@ -621,6 +627,7 @@ def buildhalide(args, env, llvmprefix):
     if args.with_halide is not None:
         env["halidebuild"] = directory(args.with_halide.dir) #src, include,
         env["halidepybinds"] = directory(args.with_halide.dir + "/python_bindings/src")
+        return env["halidebuild"]
     elif not args.build_halide:
         pass
     else:
@@ -636,7 +643,7 @@ def buildhalide(args, env, llvmprefix):
                      "-DCMAKE_BUILD_TYPE=Release",
                      "-DLLVM_DIR={0}/lib/cmake/llvm".format(llvmprefix.dir),
                      "-S",
-                     ".",
+                     "Halide",
                      "-B",
                      "build"])
             log.info("Building Halide")
@@ -645,6 +652,7 @@ def buildhalide(args, env, llvmprefix):
             halidepybinds = directory("build/python_bindings/src")
             env["halidebuild"] = halidebuild.dir
             env["halidepybinds"] = halidepybinds.dir
+        return directory("halide/build")
 
 def gen_pyactivate(env, exasim_dir):
     with exasim_dir:
@@ -659,11 +667,11 @@ def gen_pyactivate(env, exasim_dir):
             ldpath.append(env["halidebuild"])
         with exasim_dir.lower("utils/scripts/"):
             with open("pyactivate.sh", "w") as f:
-                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join(pypath)))
+                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join(str(pypath))))
                 if len(path) != 0:
-                    f.write("export PATH={0}:$PATH\n".format(":".join(path)))
+                    f.write("export PATH={0}:$PATH\n".format(":".join(str(path))))
                 if len(ldpath) != 0:
-                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(ldpath)))
+                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(str(ldpath))))
     
 
 def main():
