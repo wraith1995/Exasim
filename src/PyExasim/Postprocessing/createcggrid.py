@@ -11,7 +11,7 @@ def createcggrid(dgnodes,tlocal):
     ne = dgnodes.shape[2];
     nve = tlocal.shape[1];
 
-    cgelcon,tm1,tm2,tm3,cgnodes = mkcgent2dgent(dgnodes,1e-8)[0:5];
+    cgelcon,tm1,tm2,tm3,cgnodes = mkcgent2dgent.mkcgent2dgent(dgnodes,1e-8)[0:5];
 
     cgnodes = cgnodes.T;
     cgcells = createcgcells(cgelcon,tlocal,ne);

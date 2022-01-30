@@ -32,7 +32,8 @@ def vis(visfields,app,mesh):
     cgnodes, cgelcon, cgcells, celltype = createcggrid(dgnodes,telem)[0:4];
     dgnodes = Preprocessing.createdgnodes(mesh['p'],mesh['t'][:,app['viselem']],mesh['f'][:,app['viselem']],mesh['curvedboundary'],mesh['curvedboundaryexpr'],app['porder']);
 
-    app['paraview'] = Preprocessing.findexec(app['paraview'],app['version']);
+    if app["paraview"] != "":
+        app['paraview'] = Preprocessing.findexec(app['paraview'],app['version'])
 
     if nt==1:
         tm = matmul(visshape,reshape(visfields[:,:,app['viselem']],(visshape.shape[1], visfields.shape[1]*len(app['viselem'])), 'F'));

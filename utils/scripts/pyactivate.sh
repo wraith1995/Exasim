@@ -1,10 +1,2 @@
-#!/usr/bin/env bash
-#https://stackoverflow.com/questions/59895/how-can-i-get-the-source-directory-of-a-bash-script-from-within-the-script-itsel
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-owd=`pwd`
-cd $SCRIPT_DIR
-cd ../..
-cd src
-cwd=`pwd`
-export PYTHONPATH=$cwd:$PYTHONPATH
-cd $owd
+export PYTHONPATH=/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/src:/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/halide/build/python_bindings/src:$PYTHONPATH
+export LD_LIBRARY_PATH=/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/halide/build:$LD_LIBRARY_PATH
