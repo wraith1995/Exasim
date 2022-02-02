@@ -2,6 +2,8 @@
 External/*
 **/datain
 *.pyc
+*.a
+*.o
 *.vtu
 *.DS_Store
 lib/Linux/*
