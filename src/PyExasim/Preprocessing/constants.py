@@ -5,7 +5,7 @@ mpicc=""
 mpicxx=""
 mpiexec=""
 nvcc=""
-cpuflags=['-O2', '-ldl', '-lm', '-lblas', '-llapack']
+cpuflags=['-O2', '-ldl', '-lm', '-lblas', '-llapack', "-std=c++17"]
 gpuflags=['-lcudart', '-lcublas']
 metis=""
 gmsh=""

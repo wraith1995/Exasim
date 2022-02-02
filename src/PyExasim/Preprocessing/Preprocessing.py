@@ -57,6 +57,7 @@ def preprocessing(app,mesh):
     app['pgauss'] = 2*app['porder'];
 
     master = mkmaster(app['nd'],app['porder'],app['pgauss'],app['elemtype'],app['nodetype']);
+
     writemaster(master,filemaster);
 
     pdemodel = import_module(app['modelfile']);
@@ -101,6 +102,7 @@ def preprocessing(app,mesh):
 
     app['ncq'] = app['nc'] - app['ncu'];
     app['nch'] = app['ncu'];
+
 
     if max(app['dt'])>0.0:
         app['tdep'] = 1;
@@ -249,5 +251,6 @@ def preprocessing(app,mesh):
         dmd[i]['facepartpts'] = [];
         dmd[i]['facepartbnd'] = [];
         dmd[i]['facecon'] = [];
-
+    #highly unreliable hack to see things:
+    app["dofs"] = master['npe'] * app["ncu"] * size(dmd[i]['elempart'])
     return app, mesh, master, dmd

@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 #NOTE: I stole a lot of this from Firedrake to make a strictly inferior, but still good enough build script in under 3 hours.
+#TODO: Make update use a stored env -- flags beyond install don't really work well here.
 import logging
 import platform
 import subprocess
@@ -18,7 +19,7 @@ from itertools import chain
 import re
 import importlib
 from pkg_resources import parse_version
-
+from pathlib import Path
 #Get OS/arch info:
 osname = platform.uname().system
 arch = platform.uname().machine
@@ -48,6 +49,8 @@ class directory(object):
         self.dir = os.path.abspath(dir)
     def lower(self, n):
         return directory(self.dir + "/" +  n)
+    def up(self):
+        return director(str(Path(self.dir).parents[0:-1]))
     def __str__(self):
         return str(self.dir)
 
@@ -227,12 +230,12 @@ group.add_argument("--update", action="store_true", default=False, help="Do not 
 group.add_argument("--configure", action="store_true", default=False, help="Assume Exasim is installed and all depends are present; just regenerate configuration")
 group.add_argument("--build", action="store_true", default=False, help="Assume Exasim is installed and all depends are present and configuration is done; regenerate library files produced by Exasim")
 
-parser.add_argument("--cxxcoreflags", nargs="+", type=str, default=["-fPIC", "-O3"], help="Arguments for the C++ compiler when compiling core")
+parser.add_argument("--cxxcoreflags", nargs="+", type=str, default=["-fPIC", "-O3","-std=c++17"], help="Arguments for the C++ compiler when compiling core")
 parser.add_argument("--gpucoreflags", nargs="+", type=str, default=["-D_FORCE_INLINES","-O3"], help="Arguments for the GPU compiler when compiling core")
-parser.add_argument("--gpucxxcoreflags", nargs="+", type=str, default=["-fPIC"], help="Arguments for GPU compilers to C++ compiler when compiling core")
+parser.add_argument("--gpucxxcoreflags", nargs="+", type=str, default=["-fPIC", "-std=c++17"], help="Arguments for GPU compilers to C++ compiler when compiling core")
 
 
-parser.add_argument("--cxxflags", nargs="+", type=str, default="-O2 -ldl -lm -lblas -llapack".split(" "), help="Default cxx flags to use")
+parser.add_argument("--cxxflags", nargs="+", type=str, default="-O2 -ldl -lm -lblas -llapack -std=c++17".split(" "), help="Default cxx flags to use")
 parser.add_argument("--gpuflags", nargs="+", type=str, default=["-lcudart", "-lcublas"], help="Default nvcc flags to use")
 parser.add_argument("--includes", nargs="+", type=directory, default=[], help="Default include directories")
 parser.add_argument("--libs", nargs="+", type=directory, default=[], help="Default library directories")
@@ -528,6 +531,8 @@ def init_env(args, exasim_dir):
     env["metis"] = args.with_metis
     env["gmsh"] = args.with_gmsh
     env["paraview"] = args.with_paraview
+    env["halidebuild"] = args.with_halide
+
 
     #langs:
     env["python"] = None
@@ -653,6 +658,18 @@ def buildhalide(args, env, llvmprefix):
             env["halidebuild"] = halidebuild.dir
             env["halidepybinds"] = halidepybinds.dir
         return directory("halide/build")
+def buildhlaidegenerators(args, env, exasimrdir):
+    if env["halidebuild"] is not None:
+        tools = env["halidebuild"].up().lower("Halide/tools")
+        halideinclude = env["halidebuild"].lower("include")
+        halidebuildsrc = env["halidebuild"].lower("src")
+        with exasimdir.lower("src/Kernel/HalideBlas/"):
+            generators = ["cgsparts.cpp"]
+            for gen in generators:
+                log.info("Building generator {0}".format(gen))
+                run_cmd([env["cxx"], gen, tools.dir + "/GenGen.cpp", "-g", "-std=c++17", "-fno-rtti", "-I{0}".format(halideinclude.dir), "-L{0}".format(halidebuildsrc.dir), "-lHalide", "-lpthread", "-ldl", "-o", gen])
+                
+        
 
 def gen_pyactivate(env, exasim_dir):
     with exasim_dir:
@@ -667,11 +684,11 @@ def gen_pyactivate(env, exasim_dir):
             ldpath.append(env["halidebuild"])
         with exasim_dir.lower("utils/scripts/"):
             with open("pyactivate.sh", "w") as f:
-                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join(str(pypath))))
+                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join([str(x) for x in pypath])))
                 if len(path) != 0:
-                    f.write("export PATH={0}:$PATH\n".format(":".join(str(path))))
+                    f.write("export PATH={0}:$PATH\n".format(":".join([str(x) for x in path])))
                 if len(ldpath) != 0:
-                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(str(ldpath))))
+                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(([str(x) for x in ldpath]))))
     
 
 def main():
@@ -693,13 +710,13 @@ def main():
                 os.mkdir("External")
             except FileExistsError:
                 pass
-        deps = exasim_dir.lower("External")
-        with deps:
-            llvmprefix = buildllvm(args, env)
-            buildhalide(args, env, llvmprefix)
-            #install external depends here.
-            # Try to respect update vs. install?
-            #e.g LLVM, CLANG, Halide, Tiramisu, Julia, Matlab
+            deps = exasim_dir.lower("External")
+            with deps:
+                llvmprefix = buildllvm(args, env)
+                #enzyme?
+                buildhalide(args, env, llvmprefix)
+                buildhlaidegenerators(args, env, exasim_dir)
+                #tiramisu?
         setup_compilers(args, env) #This is here because in the future we will want to include compiler info from downloaded compilers
         check_compilers(env)
         setup_external_packages(args, env)
@@ -710,7 +727,7 @@ def main():
                     log.info("Generating Julia constants file")
                     gen_constants_file(env, "constants.jl")
             if matlab:
-                with exasim_dir.lower("src/Julia/Preprocessing"):
+                with exasim_dir.lower("src/Matlab/Preprocessing"):
                     log.info("Generating Matlab constants file")
                     gen_constants_file(env, "constants.m")
             if python:
@@ -741,7 +758,7 @@ def main():
                     log.info("Copying gpu files to os directory")
                     shutil.move("gpuCore.o", osname + "/gpuCore.o")                                                        
         if python:
-            gen_pyactivate(env, exasim_dir)
+            #gen_pyactivate(env, exasim_dir)
             print("Run 'source {0}/utils/scripts/pyactivate.sh' to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
     main()

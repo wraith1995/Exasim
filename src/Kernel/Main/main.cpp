@@ -9,6 +9,9 @@
 #include <sys/unistd.h>
 
 
+
+
+
 #ifdef _OPENMP
 #define HAVE_OPENMP
 #else
@@ -17,6 +20,14 @@
 
 #ifdef _CUDA
 #define HAVE_CUDA
+#endif
+
+#ifdef _HALIDE
+#include "HalideRuntime.h"
+#include "HalideBuffer.h"
+#include "dgemtv.h"
+#include "dgemvnormed.h"
+#define HAVE_HALIDE
 #endif
 
 #ifdef _ENZYME

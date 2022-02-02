@@ -12,12 +12,46 @@ void MGS(cublasHandle_t handle, dstype *V, dstype *H, Int N, Int m, Int backend)
 }
 void CGS(cublasHandle_t handle, dstype *V, dstype *H, dstype *temp, Int N, Int m, Int backend)
 {
+  //handle, m, n,alpha, A, lda, x, incx, beta, y ,incy, ylocal. backed
+  //computes into temp and then copies over to H...
     PGEMTV(handle, N, m, &one, V, N, &V[m*N], inc1, &zero, H, inc1, temp, backend);
+    //handle, m, n, lapha, A, lda, x, incx, beta, y, incy, backend
     PGEMNV(handle, N, m, &minusone, V, N, H, inc1, &one, &V[m*N], inc1, backend);
     PDOT(handle, N, &V[m*N], inc1, &V[m*N], inc1, &H[m], backend);
     H[m] = sqrt(H[m]);
     ArrayMultiplyScalar(&V[m*N], one/H[m], N, backend);
 }
+
+void halideCGS(cublasHandle_t handle, dstype *V, dstype *H, dstype *temp, Int N, Int m, Int backend)
+{
+  #ifdef HAVE_HALIDE
+  using namespace Halide;
+  //N rows, m cols
+  if (backend == 0){
+    //    cout << N << ", " << m << "\n";
+    Halide::Runtime::Buffer<double> A(V, N, m); //Ordering
+    Halide::Runtime::Buffer<double> x(&V[m*N], N);
+    Halide::Runtime::Buffer<double> tempBuff(temp, m);
+    Halide::Runtime::Buffer<double> hBuff(H, m);
+    Halide::Runtime::Buffer<double, 0> ynorm =  Halide::Runtime::Buffer<double,0>::make_scalar(&H[m]);
+    Halide::Runtime::Buffer<double> out(&V[m*N], N); //danger 
+    
+    int ret1 = dgemtv(A, x, tempBuff);//compute tempbuff = A^Tx
+    if(ret1 !=0 ){
+      std::cerr << "Error! dgemtv returned non-zero";
+    }
+    ArrayCopy(H, temp, m, backend);///H=tempbuff
+    int ret2 = dgemvnormed(A, hBuff, x, out, ynorm);//x = (x-Atempbuff), ynorm = norm(x), x = normalized(x)
+    if(ret2 !=0 ){
+      std::cerr << "Error! dgemvnormed returned non-zero";
+    }
+    
+    }
+  #endif
+
+  //N vector at V
+}
+
 void UpdateSolution(cublasHandle_t handle, dstype *x, dstype *y, dstype *H, dstype *s, dstype *V,
         Int i, Int N, Int n, Int backend)
 {
@@ -113,8 +147,10 @@ Int GMRES(sysstruct &sys, CDiscretization &disc, CPreconditioner& prec, Int back
             START_TIMING;    
             if (orthogMethod == 0)
                 MGS(disc.common.cublasHandle, sys.v, &H[n1*i], N, m, backend);
-            else
+            else if (orthogMethod == 1)
                 CGS(disc.common.cublasHandle, sys.v, &H[n1*i], y, N, m, backend);
+	    else if (orthogMethod == 2)
+	      halideCGS(disc.common.cublasHandle, sys.v, &H[n1*i], y, N, m, backend);
             END_TIMING_DISC(1);    
             
             // Apply Givens rotation to compute s

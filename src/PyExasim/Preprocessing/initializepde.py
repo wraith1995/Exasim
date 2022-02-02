@@ -15,6 +15,7 @@ def initializepde(version):
     pde['metis'] = metis;
     pde['paraview'] = paraview;
     pde['enzyme'] = [];
+    pde['halide'] = halidebuild
 
     pde['codename'] = "Exasim";
     pde['version'] = version;
