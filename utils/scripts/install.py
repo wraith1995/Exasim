@@ -730,11 +730,18 @@ def gen_pyactivate(env, exasim_dir):
             ldpath.append(env["halidebuild"])
         with exasim_dir.lower("utils/scripts/"):
             with open("pyactivate.sh", "w") as f:
-                f.write("export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join([str(x) for x in pypath])))
+                s1 = "export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join([str(x) for x in pypath]))
+                log.info("Adding " + s1)
+                f.write(s1)
                 if len(path) != 0:
-                    f.write("export PATH={0}:$PATH\n".format(":".join([str(x) for x in path])))
+                    s2 = "export PATH={0}:$PATH\n".format(":".join([str(x) for x in path]))
+                    log.info("Adding " + s2)
+                    f.write(s2)
                 if len(ldpath) != 0:
-                    f.write("export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(([str(x) for x in ldpath]))))
+                    s3 = "export LD_LIBRARY_PATH={0}:$LD_LIBRARY_PATH\n".format(":".join(([str(x) for x in ldpath])))
+                    log.info("Adding " + s3)
+                    f.write(s3)
+                    
     
 
 def main():
