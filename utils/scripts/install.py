@@ -50,7 +50,7 @@ class directory(object):
     def lower(self, n):
         return directory(self.dir + "/" +  n)
     def up(self):
-        return director(str(Path(self.dir).parents[0:-1]))
+        return directory(self.dir + "/..")
     def __str__(self):
         return str(self.dir)
 
@@ -705,9 +705,10 @@ def buildhalide(args, env, llvmprefix):
 def buildhlaidegenerators(args, env, exasimrdir):
     if env["halidebuild"] is not None:
         log.info("Building Halide Generators")
-        tools = env["halidebuild"].up().lower("Halide/tools")
-        halideinclude = env["halidebuild"].lower("include")
-        halidebuildsrc = env["halidebuild"].lower("src")
+        hb = directory(env["halidebuild"])
+        tools = hb.up().lower("Halide/tools")
+        halideinclude = hb.lower("include")
+        halidebuildsrc = hb.lower("src")
         with exasimdir.lower("src/Kernel/HalideBlas/"):
             generators = ["cgsparts.cpp"]
             for gen in generators:
