@@ -224,6 +224,7 @@ parser.add_argument("--no-package-manager", action='store_false', dest="package_
 
 parser.add_argument("--exasim-directory", action="store", default=os.path.abspath(os.getcwd()), type=dir_path, dest="exasim_directory", help="Location that exasim is already installed in or where you want to install it.")
 parser.add_argument("--exasim-branch", action="store", type=str, default="master", help="Branch of Exasim to install")
+
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--install", action="store_true", default=False, help="Download Exasim + dependencies, and then configure, and then build.")
 group.add_argument("--update", action="store_true", default=False, help="Do not clone exasim; Just rerun install as if clone has just been finished (though we will try to update this clone)")
@@ -282,7 +283,11 @@ group = parser.add_mutually_exclusive_group()
 group.add_argument("--build-llvm", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.")
 group.add_argument("--build-llvm-opencilk", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.")
 group.add_argument("--with-llvm", default=None, action="store", type=dir_path, help="LLVM+Clang prefix directory")
+group.add_argument("--with-llvm-opencilk", default=None, action="store", type=str, help="Build our own LLVM+clang; this requires cmake + ninja build system in your path+LD_LIBRARY_PATH; python3.9, python3.9-dev are also reccomended.") #NOT IMPLEMENTED
 
+group = parser.add_mutually_exclusive_group()
+group.add_argument("--build-cheetah", default=None, action="store_true", dest="build_cheetah", help="Build our own Cheetah on top of our llvm and for use in Halide and other jits.")
+group.add_argument("--with-cheetah", default=None, action="store", type=dir_path, help="Path to Cheetah runtime libs compiled for JIT.")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--build-halide", default=False, action="store_true", help="Build our own Halide. Requires LLVM")
@@ -540,10 +545,12 @@ def init_env(args, exasim_dir):
     env["matlab"] = None
 
     #Potentially otheruseful things
-    env["PATH"] = None
-    env["LD_LIBRARY_PATH"] = None
+    env["PATH"] = []
+    env["LD_LIBRARY_PATH"] = []
     env["OS"] = osname
     env["ARCH"] = arch
+
+    #runtimes:
     return env
 
 
@@ -571,7 +578,7 @@ Steps:
 8. Add packages required by these programming languages
 9. Install external dependieces that can't be included via standard means
 9.1. LLVM
-9.3. Tapiar
+9.2. Tapiar + Cheetah
 9.3. Halide (Rectangular mat-vec generate mode)
 9.4. Enzyme Mode
 9.5 Tiramisu
@@ -600,6 +607,11 @@ def buildllvm(args, env):
         llvmgit = "https://github.com/llvm/llvm-project.git" if args.build_llvm is not None else "https://github.com/OpenCilk/opencilk-project.git"
         llvmfile = "llvm-project" if args.build_llvm is not None else "opencilk-project"
         run_cmd(["git", "clone", "--depth","1","--branch", "{0}".format(llvmbranch), llvmgit])
+        if llvmfile == "opencilk-project":
+            with directory(llvmfile):
+                log.info("Cloning cilk runtime and cilk tools")
+                run_cmd(["git", "clone", "https://github.com/wraith1995/cheetah.git", "-b", "teoc-new-cmake"])
+                run_cmd(["git", "clone", "https://github.com/OpenCilk/productivity-tools.git", "cilktools"])
         os.mkdir("build")
         os.mkdir("prefix")
         llvmprefix = directory("prefix")
@@ -609,6 +621,7 @@ def buildllvm(args, env):
                      "-G", "Ninja",
                      "-S","../{0}/llvm".format(llvmfile),
                      "-DHAVE_LIBEDIT=0",
+                     "-DLLVM_ENABLE_RUNTIMES='cheetah;cilktools'", #SWITCH OFF
                      "-DLLVM_ENABLE_TERMINFO=OFF",
                      "-DLLVM_ENABLE_PROJECTS='clang;lld;clang-tools-extra'",
                      "-DLLVM_ENABLE_EH=ON",
@@ -627,6 +640,36 @@ def buildllvm(args, env):
             env["cc"] = llvmprefix.dir + "/bin/clang"
             env["cxx"] = llvmprefix.dir + "/bin/clang++"
         return llvmprefix
+def buildcheetah(args, env, llvmprefix):
+    if args.with_cheetah is not None:
+        env["LD_LIBRARY_PATH"].append(args.with_cheetah)
+        log.info("Updating LD_LIBRARY PATH so that {0} is included".format(args.with_cheetah))
+        os.environ["LD_LIBRARY_PATH"] = str(args.with_cheetah.dir) + ":" + os.environ["LD_LIBRARY_PATH"] 
+        log.info("LD_LIBRARY_PATH is now: {0}".format(os.environ["LD_LIBRARY_PATH"]))
+    elif args.build_cheetah:
+        os.mkdir("cheetah")
+        with directory("cheetah"):
+            log.info("Cloning Cheetah")
+            run_cmd(["git", "clone", "https://github.com/wraith1995/cheetah.git", "-b", "teoc-new-cmake"])
+            os.mkdir("build")
+            os.mkdir("prefix")
+            log.info("Configuring cheetah")
+            run_cmd(["cmake", "-DCHEETAH_EMULATE_TLS=ON", "-B", "build", "-S", "cheetah", "-DCMAKE_C_COMPILER={0}".format(str(llvmprefix.dir) + "/bin/clang"), "-DLLVM_CONFIG_PATH={0}".format(str(llvmprefix.dir) + "/bin/llvm-config"), "-DCMAKE_INSTALL_PREFIX=prefix"])
+            log.info("Buildin cheetah")
+            run_cmd(["cmake", "--build", "build/", "-j", str(args.cores)])
+            log.info("Installing cheetah")
+            run_cmd(["cmake", "--install", "build"])
+            cheetahlib = directory("prefix/lib")
+            with cheetahlib:
+                for f in os.listdir("."):
+                    pcheetalib = directory(f)
+                    log.info("Updating LD_LIBRARY PATH so that {0} is included".format(str(pcheetalib.dir)))
+                    env["LD_LIBRARY_PATH"].append(str(pcheetalib.dir))
+                    os.environ["LD_LIBRARY_PATH"] = str(str(pcheetalib.dir)) + ":" + os.environ["LD_LIBRARY_PATH"]
+                    log.info("LD_LIBRARY_PATH is now: {0}".format(os.environ["LD_LIBRARY_PATH"]))
+    else:
+        pass
+
     
 def buildhalide(args, env, llvmprefix):
     if args.with_halide is not None:
@@ -640,13 +683,14 @@ def buildhalide(args, env, llvmprefix):
         with directory("halide"):
             os.mkdir("build")
             log.info("Cloning Halide")
-            run_cmd(["git", "clone", "https://github.com/halide/Halide.git"])
+            run_cmd(["git", "clone", "https://github.com/cesmix-mit/Halide.git","-b", "teo-opencilk"])
             log.info("Configuring Halide")
             run_cmd(["cmake",
                      "-G",
                      "Ninja",
                      "-DCMAKE_BUILD_TYPE=Release",
                      "-DLLVM_DIR={0}/lib/cmake/llvm".format(llvmprefix.dir),
+                     "-DCLANG_DIR={0}/lib/cmake/clang".format(llvmprefix.dir),
                      "-S",
                      "Halide",
                      "-B",
@@ -660,6 +704,7 @@ def buildhalide(args, env, llvmprefix):
         return directory("halide/build")
 def buildhlaidegenerators(args, env, exasimrdir):
     if env["halidebuild"] is not None:
+        log.info("Building Halide Generators")
         tools = env["halidebuild"].up().lower("Halide/tools")
         halideinclude = env["halidebuild"].lower("include")
         halidebuildsrc = env["halidebuild"].lower("src")
@@ -674,8 +719,8 @@ def buildhlaidegenerators(args, env, exasimrdir):
 def gen_pyactivate(env, exasim_dir):
     with exasim_dir:
         pypath = []
-        path = []
-        ldpath = []
+        path = env["PATH"]
+        ldpath = env["LD_LIBRARY_PATH"]
         pyexasim = exasim_dir.lower("src/")
         pypath.append(pyexasim)
         if "halidepybinds" in env:
@@ -713,10 +758,11 @@ def main():
             deps = exasim_dir.lower("External")
             with deps:
                 llvmprefix = buildllvm(args, env)
-                #enzyme?
+                buildcheetah(args, env, llvmprefix)
                 buildhalide(args, env, llvmprefix)
                 buildhlaidegenerators(args, env, exasim_dir)
                 #tiramisu?
+                #enzyme
         setup_compilers(args, env) #This is here because in the future we will want to include compiler info from downloaded compilers
         check_compilers(env)
         setup_external_packages(args, env)
