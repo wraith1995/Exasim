@@ -702,7 +702,7 @@ def buildhalide(args, env, llvmprefix):
             env["halidebuild"] = halidebuild.dir
             env["halidepybinds"] = halidepybinds.dir
         return directory("halide/build")
-def buildhlaidegenerators(args, env, exasimrdir):
+def buildhlaidegenerators(args, env, exasimdir):
     if env["halidebuild"] is not None:
         log.info("Building Halide Generators")
         hb = directory(env["halidebuild"])

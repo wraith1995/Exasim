@@ -1,22 +1,22 @@
-exasim="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim"
-cc="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/llvm/prefix/bin/clang"
-cxx="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/llvm/prefix/bin/clang++"
+exasim="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim"
+cc="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/llvm/prefix/bin/clang"
+cxx="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/llvm/prefix/bin/clang++"
 mpicc=""
 mpicxx=""
 mpiexec=""
 nvcc=""
-cpuflags=['-O2', '-ldl', '-lm', '-lblas', '-llapack', "-std=c++17"]
+cpuflags=['-O2', '-ldl', '-lm', '-lblas', '-llapack', '-std=c++17']
 gpuflags=['-lcudart', '-lcublas']
 metis=""
 gmsh=""
 paraview=""
+halidebuild="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/halide/build"
 python="/data/scratch/teoc/installs/pythons/py39p/install/bin/python3"
 julia=""
 matlab=""
-PATH=""
-LD_LIBRARY_PATH=""
+PATH=[]
+LD_LIBRARY_PATH=['/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/cheetah/prefix/lib/x86_64-unknown-linux-gnu']
 OS="Linux"
 ARCH="x86_64"
-llvm_dir="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/llvm/prefix"
-halidebuild="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/halide/build"
-halidepybinds="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/Exasim/External/halide/build/python_bindings/src"
+llvm_dir="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/llvm/prefix"
+halidepybinds="/data/scratch/teoc/projects/exasimTiramisu/exasim/tests/tests/Exasim/External/halide/build/python_bindings/src"
