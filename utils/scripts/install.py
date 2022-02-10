@@ -391,7 +391,7 @@ def linux_or_mac(ps, opt1, opt2):
 def install_packages(env, args, python, julia, matlab):
     if not args.package_manager:
         return
-    packages = ["autoconf", "automake", "make", "cmake"]
+    packages = ["autoconf", "automake", "make", "cmake", "ninja-build"]
     if args.system_python:
         packages.append("python3")
         packages.append("python3-dev")
