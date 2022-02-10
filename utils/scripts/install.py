@@ -713,7 +713,7 @@ def buildhlaidegenerators(args, env, exasimdir):
             generators = ["cgsparts.cpp"]
             for gen in generators:
                 log.info("Building generator {0}".format(gen))
-                run_cmd([env["cxx"], gen, tools.dir + "/GenGen.cpp", "-g", "-std=c++17", "-fno-rtti", "-I{0}".format(halideinclude.dir), "-L{0}".format(halidebuildsrc.dir), "-lHalide", "-lpthread", "-ldl", "-o", gen])
+                run_cmd([env["cxx"], gen, tools.dir + "/GenGen.cpp", "-g", "-std=c++17", "-fno-rtti", "-I{0}".format(halideinclude.dir), "-L{0}".format(halidebuildsrc.dir), "-lHalide", "-lpthread", "-ldl", "-o", gen[0:-4]])
                 
         
 
@@ -812,7 +812,7 @@ def main():
                     log.info("Copying gpu files to os directory")
                     shutil.move("gpuCore.o", osname + "/gpuCore.o")                                                        
         if python:
-            #gen_pyactivate(env, exasim_dir)
+            gen_pyactivate(env, exasim_dir)
             print("Run 'source {0}/utils/scripts/pyactivate.sh' to setup the python modules to setup exasim".format(exasim_dir.dir))
 if __name__ == "__main__":
     main()
