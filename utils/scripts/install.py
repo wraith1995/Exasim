@@ -727,7 +727,7 @@ def gen_pyactivate(env, exasim_dir):
         if "halidepybinds" in env:
             pypath.append(env["halidepybinds"])
         if "halidebuild" in env:
-            ldpath.append(env["halidebuild"])
+            ldpath.append(env["halidebuild"]+"/src/")
         with exasim_dir.lower("utils/scripts/"):
             with open("pyactivate.sh", "w") as f:
                 s1 = "export PYTHONPATH={0}:$PYTHONPATH\n".format(":".join([str(x) for x in pypath]))
